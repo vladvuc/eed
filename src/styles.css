@@ -160,3 +160,25 @@
 .leaderboard-chart .recharts-bar-rectangle {
   cursor: pointer;
 }
+
+/* Pre-rendered page summary (src/data/seo.ts) shown until React mounts and replaces it. */
+.seo-fallback {
+  max-width: 72ch;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  line-height: 1.5;
+}
+.seo-fallback h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.seo-fallback p,
+.seo-fallback ul {
+  margin-bottom: 0.75rem;
+  color: var(--muted-foreground);
+}
+.seo-fallback a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
