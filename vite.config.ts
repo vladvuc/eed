@@ -70,6 +70,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Listen on the LAN too, so the dev app can be opened on a phone (http://<this machine's IP>:5173).
+    host: true,
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

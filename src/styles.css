@@ -145,6 +145,7 @@
   --chart-ink-secondary: #52514e;
   --chart-surface: var(--card);
   --chart-hover: rgba(11, 11, 11, 0.04);
+  --map-empty: #c9c8c2;
 }
 .dark {
   --chart-grid: #2c2c2a;
@@ -152,6 +153,7 @@
   --chart-ink-muted: #898781;
   --chart-ink-secondary: #c3c2b7;
   --chart-hover: rgba(255, 255, 255, 0.05);
+  --map-empty: #4a4a47;
 }
 
 .chart svg {

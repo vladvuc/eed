@@ -78,7 +78,7 @@ export function mergeSupplement(main: StatDataset, supp: StatDataset): StatDatas
     measures,
     notes: [
       ...(main.notes ?? []),
-      `${names.join(', ')}: from Eurostat ${SUPPLEMENT_DATASET} (GDP and main aggregates – international data cooperation), which ends in ${last('CP_MEUR') ?? '–'} for current prices and ${last('CLV_PCH_PRE') ?? '–'} for growth. Its volume index is rebased from 2010 = 100 to 2015 = 100; PPS and chain-linked euro values are not published.`,
+      `${names.join(', ')}: Eurostat ${SUPPLEMENT_DATASET}, data until ${last('CP_MEUR') ?? '–'}.`,
     ],
   }
 }

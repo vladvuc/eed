@@ -106,3 +106,12 @@ export function shiftLightness(hex: string, dL: number): string {
   const lab = hexToOklab(hex)
   return atLightness(lab, Math.min(1, Math.max(0, lab.L + dL)))
 }
+
+/** Interpolates between two colours in OKLab (perceptually even steps), t in 0..1. */
+export function mix(from: string, to: string, t: number): string {
+  const a = hexToOklab(from)
+  const b = hexToOklab(to)
+  const k = Math.min(1, Math.max(0, t))
+  const rgb = oklabToLinear({ L: a.L + (b.L - a.L) * k, a: a.a + (b.a - a.a) * k, b: a.b + (b.b - a.b) * k })
+  return rgbToHex(rgb.map(fromLinear) as [number, number, number])
+}

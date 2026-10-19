@@ -242,7 +242,7 @@ export default function App() {
       )}
 
       {data && tab.kind === 'leaderboard' && (
-        <main className="main mx-auto flex w-full max-w-[1100px] min-w-0 flex-col gap-4 px-4 pt-5 pb-8 md:px-8">
+        <main className="main mx-auto flex w-full max-w-[1600px] min-w-0 flex-col gap-4 px-4 pt-5 pb-8 md:px-8">
           <LeaderboardControls
             measures={tab.measures}
             measure={measure}
@@ -254,34 +254,23 @@ export default function App() {
             view={ts.view}
             onView={(v) => patch({ view: v })}
           />
-          <Card className="panel gap-3" aria-live="polite">
-            <CardHeader>
-              <CardTitle className="text-[15px]">
-                {measure.label}
-                {tab.rankMode === 'latest' ? ' — latest quarter' : ` — ${period}`}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                {tab.title} · biggest value first
-                {tab.rankMode !== 'latest' && data.projectionsFrom && period >= data.projectionsFrom
-                  ? ' · IMF projection'
-                  : ''}
-              </p>
-            </CardHeader>
-            <CardContent>
-              <Leaderboard
-                data={data}
-                codes={rankedCodes}
-                excluded={excluded}
-                onExclude={(code) => setExcluded((xs) => (xs.includes(code) ? xs : [...xs, code]))}
-                onRestore={(code) => setExcluded((xs) => xs.filter((c) => c !== code))}
-                onRestoreAll={() => setExcluded([])}
-                measure={measure}
-                period={period}
-                mode={tab.rankMode ?? 'period'}
-                view={ts.view}
-              />
-            </CardContent>
-          </Card>
+          <Leaderboard
+            data={data}
+            codes={rankedCodes}
+            excluded={excluded}
+            onExclude={(code) => setExcluded((xs) => (xs.includes(code) ? xs : [...xs, code]))}
+            onRestore={(code) => setExcluded((xs) => xs.filter((c) => c !== code))}
+            onRestoreAll={() => setExcluded([])}
+            onExcludeAll={() => setExcluded((xs) => [...xs, ...LEADERBOARD_CODES.filter((c) => !xs.includes(c))])}
+            measure={measure}
+            period={period}
+            mode={tab.rankMode ?? 'period'}
+            view={ts.view}
+            title={`${measure.label}${tab.rankMode === 'latest' ? ' — latest quarter' : ` — ${period}`}`}
+            subtitle={`${tab.title} · biggest value first${
+              tab.rankMode !== 'latest' && data.projectionsFrom && period >= data.projectionsFrom ? ' · IMF projection' : ''
+            }`}
+          />
           {footer}
         </main>
       )}

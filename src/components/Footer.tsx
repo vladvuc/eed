@@ -52,9 +52,7 @@ export function Footer({ source, updated, notes, hasProjections }: Props) {
             {updated ? `, fetched ${formatDate(updated)}` : ''}. GDP at market prices (B1GQ).
           </p>
           <p className="footnote max-w-[72ch]">
-            Growth rates are computed from chain-linked volume levels in national currency. Quarter-on-quarter
-            change and the index use seasonally adjusted series, which the IMF does not publish for Russia,
-            Belarus, Georgia, Armenia or Azerbaijan; use year-on-year change for those.
+            Russia, Belarus, Georgia, Armenia, Azerbaijan: no seasonally adjusted data, use year-on-year.
           </p>
         </>
       )}
