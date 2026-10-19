@@ -20,6 +20,7 @@ const nf2 = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 })
 /** v is in millions. Compact to M / B / T. */
 function compactMillions(prefix: string) {
   return (v: number): string => {
+    if (v === 0) return `${prefix}0`
     const abs = Math.abs(v)
     if (abs >= 1e6) return `${prefix}${nf2.format(v / 1e6)} T`
     if (abs >= 1e3) return `${prefix}${nf2.format(v / 1e3)} B`
@@ -30,6 +31,7 @@ function compactMillions(prefix: string) {
 /** v is in billions. Compact to B / T. */
 function compactBillions(prefix: string) {
   return (v: number): string => {
+    if (v === 0) return `${prefix}0`
     const abs = Math.abs(v)
     if (abs >= 1e3) return `${prefix}${nf2.format(v / 1e3)} T`
     return `${prefix}${nf2.format(v)} B`

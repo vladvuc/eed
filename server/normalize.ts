@@ -1,4 +1,4 @@
-import type { EurostatUnit, JsonStatDataset, JsonStatDimension, Series, StatDataset } from './types.ts'
+import type { JsonStatDataset, JsonStatDimension, Series, StatDataset } from './types.ts'
 import { EUROSTAT_UNITS } from './types.ts'
 
 /**
@@ -37,7 +37,7 @@ function readValue(value: JsonStatDataset['value'], linear: number): number | nu
  * Handles any dimension order by reading `id`, missing cells (sparse `value`),
  * and units that are absent from the response (they come back as empty maps).
  */
-export function normalize(ds: JsonStatDataset): StatDataset {
+export function normalize(ds: JsonStatDataset, units: readonly string[] = EUROSTAT_UNITS): StatDataset {
   const pos = (name: string) => {
     const i = ds.id.indexOf(name)
     if (i < 0) throw new Error(`JSON-stat response is missing dimension "${name}"`)
@@ -57,14 +57,11 @@ export function normalize(ds: JsonStatDataset): StatDataset {
   // linear index is always position 0 → offset 0.
   const countries = geoCodes.map((code) => ({ code, name: geoLabels[code] ?? code }))
 
-  const measures = Object.fromEntries(EUROSTAT_UNITS.map((u) => [u, {}])) as Record<
-    EurostatUnit,
-    Record<string, Series>
-  >
+  const measures: Record<string, Record<string, Series>> = Object.fromEntries(units.map((u) => [u, {}]))
 
   unitCodes.forEach((unit, ui) => {
-    if (!(EUROSTAT_UNITS as readonly string[]).includes(unit)) return
-    const target = measures[unit as EurostatUnit]
+    if (!units.includes(unit)) return
+    const target = measures[unit]
     geoCodes.forEach((geo, gi) => {
       const series: Series = new Array(timeCodes.length)
       for (let ti = 0; ti < timeCodes.length; ti++) {

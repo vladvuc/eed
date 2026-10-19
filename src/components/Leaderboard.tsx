@@ -167,7 +167,20 @@ function LeaderboardChart({
             dataKey="label"
             width={mode === 'latest' ? 250 : 200}
             interval={0}
-            tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+            tick={(props: { x?: number | string; y?: number | string; payload?: { value?: unknown } }) => (
+              // Plain single-line label: Recharts' default tick wraps long names onto two lines.
+              <text
+                x={Number(props.x ?? 0)}
+                y={Number(props.y ?? 0)}
+                dy={4}
+                textAnchor="end"
+                fontSize={12}
+                fill="var(--foreground)"
+                className="recharts-cartesian-axis-tick-value"
+              >
+                {String(props.payload?.value ?? '')}
+              </text>
+            )}
             tickLine={false}
             axisLine={false}
           />

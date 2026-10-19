@@ -9,7 +9,7 @@ export const EUROSTAT_GROUPS: CountryGroup[] = [
   },
   { id: 'wb', label: 'Western Balkan', codes: ['AL', 'BA', 'ME', 'MK', 'RS', 'XK'] },
   { id: 'efta_uk', label: 'EFTA & United Kingdom', codes: ['IS', 'LI', 'NO', 'CH', 'UK'] },
-  { id: 'other', label: 'Other candidates & neighbours', codes: ['TR', 'MD', 'UA'] },
+  { id: 'other', label: 'Black Sea region', codes: ['TR', 'MD', 'UA', 'RU'] },
   { id: 'agg', label: 'Aggregates', codes: ['EU27_2020', 'EA20'] },
 ]
 
@@ -39,9 +39,10 @@ export function groupsFor(source: Source): CountryGroup[] {
   return source === 'eurostat' ? EUROSTAT_GROUPS : IMF_GROUPS
 }
 
+/** First-load selection: nothing is chosen until the user picks countries. */
 export const DEFAULT_SELECTION: Record<SelectionKey, string[]> = {
-  eurostat: ['AL', 'BA', 'ME', 'MK', 'RS', 'XK'],
-  imf: ['DEU', 'FRA', 'POL', 'TUR', 'UKR', 'RUS'],
+  eurostat: [],
+  imf: [],
 }
 
 /** Shorter display names than the official labels, where those are unwieldy. */

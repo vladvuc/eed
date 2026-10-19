@@ -14,7 +14,7 @@ A local web app for comparing European economies. Select countries and each appe
 | Latest quarter  | QNEA                          | quarterly                                             | countries ranked by most recent quarter (y/y, q/q or nominal y/y), with previous quarter and reference period                         |
 | Leaderboard     | WEO                           | annual                                                | all European countries ranked for one year by growth (or inflation/debt), biggest first; click a bar to exclude a country and re-rank |
 
-IMF tabs cover all of Europe, including Ukraine, Russia, Belarus, Moldova, the Caucasus, Türkiye and microstates; Eurostat does not publish Russia. A single country on a growth measure is drawn as bars per period.
+IMF tabs cover all of Europe, including Ukraine, Russia, Belarus, Moldova, the Caucasus, Türkiye and microstates. On the Eurostat tab, Russia comes from Eurostat's `naida_10_gdp` (international data cooperation), which ends in 2020; its 2010-based volume index is rebased to 2015 = 100. A single country on a growth measure is drawn as bars per period.
 
 ## Run
 

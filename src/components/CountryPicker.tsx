@@ -1,3 +1,4 @@
+import { XIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -59,7 +60,7 @@ export function CountryPicker({
 
   return (
     <aside
-      className="picker flex flex-col overflow-hidden rounded-xl border bg-card md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)]"
+      className="picker flex flex-col overflow-hidden rounded-xl border bg-card md:sticky md:top-5 md:h-[calc(100vh-6rem)]"
       aria-label="Country selection"
     >
       <div className="flex flex-col gap-2 border-b p-3">
@@ -78,10 +79,30 @@ export function CountryPicker({
             Clear all
           </Button>
         </div>
+        {selected.length > 0 && (
+          <ul className="selected-chips flex flex-wrap gap-1.5" aria-label="Selected countries">
+            {[...selected]
+              .sort((a, b) => slotOf(a) - slotOf(b))
+              .map((code) => (
+                <li key={code}>
+                  <Badge asChild variant="outline" className="h-6 cursor-pointer gap-1.5 bg-background pr-1 hover:bg-muted">
+                    <button type="button" onClick={() => onToggle(code)} title={`Remove ${nameOf(code)}`}>
+                      <Swatch slot={slotOf(code)} />
+                      {nameOf(code)}
+                      <XIcon className="size-3 text-muted-foreground" aria-hidden="true" />
+                    </button>
+                  </Badge>
+                </li>
+              ))}
+          </ul>
+        )}
+        {selected.length === 0 && (
+          <p className="text-xs text-muted-foreground">Tick countries below to draw them on the chart.</p>
+        )}
         {isFull && <p className="text-xs text-muted-foreground">Limit reached. Deselect one to add more.</p>}
       </div>
 
-      <ScrollArea className="min-h-0 flex-1 max-md:max-h-80">
+      <ScrollArea className="min-h-0 flex-1 max-md:h-80 max-md:flex-none">
         <div className="py-2">
           {visibleGroups.map((g) => {
             const allSelected = g.codes.every((c) => selected.includes(c))
