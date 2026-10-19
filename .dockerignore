@@ -1,0 +1,12 @@
+node_modules
+dist
+server/cache
+.git
+.idea
+.plans
+.prototype
+.sandbox
+.env
+.env.*
+*.log
+.DS_Store

@@ -30,8 +30,30 @@ Other scripts:
 ```
 pnpm test         # vitest: JSON-stat normaliser tests
 pnpm build        # type-check (tsc -b) + vite build → dist/
+pnpm start        # production: one Node process serves the API and dist/ on PORT (default 3001)
 pnpm lint         # oxlint
 ```
+
+## Deploy (Docker / Dokploy)
+
+No database is needed: the server downloads the data from Eurostat and the IMF on the first
+request, keeps it for 24 hours, then refreshes it on the next request after that.
+
+The `Dockerfile` builds the client and runs `node server/index.ts` (Node 24 runs the TypeScript
+server directly) as a non-root user, with a health check on `/api/health`.
+
+In Dokploy:
+
+1. Create an **Application**, connect this Git repository, and set **Build type** to `Dockerfile`.
+2. Under **Domains**, add your domain with **container port `3001`** (HTTPS via Let's Encrypt).
+3. Optional: under **Advanced → Volumes**, add a volume mounted at **`/app/data`** so the cached
+   datasets survive redeploys. Without it, the first visit after a redeploy takes a few seconds
+   while the data is downloaded again.
+4. Deploy.
+
+Environment variables (all optional): `PORT` (default `3001`), `CACHE_DIR` (default `/app/data`
+in the image, `server/cache` locally). The server needs outbound HTTPS to `ec.europa.eu`,
+`www.imf.org` and `api.imf.org`.
 
 ## Features
 

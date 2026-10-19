@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url'
 
 const TTL_MS = 24 * 60 * 60 * 1000
 const here = path.dirname(fileURLToPath(import.meta.url))
-const CACHE_DIR = path.join(here, 'cache')
+// CACHE_DIR lets a deployment put the cache on a persistent volume.
+const CACHE_DIR = process.env.CACHE_DIR ? path.resolve(process.env.CACHE_DIR) : path.join(here, 'cache')
 
 interface CacheEntry<T> {
   fetchedAt: number

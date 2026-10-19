@@ -11,6 +11,7 @@ import { LeaderboardControls } from './components/LeaderboardControls'
 import { SeriesChart, type SeriesSpec } from './components/SeriesChart'
 import { Swatch } from './components/Swatch'
 import { DEFAULT_SELECTION, IMF_GROUPS, displayName, groupsFor, selectionKeyFor } from './data/countries'
+import { PAGE_SEO, applyPageSeo, pageIdFromPath } from './data/seo'
 import { TABS, TAB_BY_ID, isTabId } from './data/tabs'
 import { useDataset } from './hooks/useDataset'
 import { useSelection } from './hooks/useSelection'
@@ -44,24 +45,42 @@ function readExcluded(): string[] {
 /** Every IMF country (no aggregates) for the leaderboard. */
 const LEADERBOARD_CODES = IMF_GROUPS.filter((g) => g.id !== 'agg').flatMap((g) => g.codes)
 
-function readHashTab(): TabId {
+/** Each tab has its own path (see src/data/seo.ts); old `#tab` links still resolve. */
+function readUrlTab(): TabId {
   const h = window.location.hash.replace(/^#/, '')
-  return isTabId(h) ? h : 'eurostat'
+  if (isTabId(h)) return h
+  const fromPath = pageIdFromPath(window.location.pathname)
+  return fromPath && isTabId(fromPath) ? fromPath : 'eurostat'
 }
 
 export default function App() {
-  const [tabId, setTabId] = useState<TabId>(readHashTab)
+  const [tabId, setTabId] = useState<TabId>(readUrlTab)
   const tab = TAB_BY_ID[tabId]
 
   useEffect(() => {
-    const onHash = () => setTabId(readHashTab())
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
+    const onNavigate = () => setTabId(readUrlTab())
+    window.addEventListener('popstate', onNavigate)
+    window.addEventListener('hashchange', onNavigate)
+    return () => {
+      window.removeEventListener('popstate', onNavigate)
+      window.removeEventListener('hashchange', onNavigate)
+    }
   }, [])
 
+  // Keep the URL on the tab's canonical path (also rewrites legacy `#tab` links) and the head in sync.
+  useEffect(() => {
+    const { path } = PAGE_SEO[tabId]
+    if (window.location.pathname !== path || window.location.hash) {
+      window.history.replaceState(null, '', path + window.location.search)
+    }
+    applyPageSeo(tabId)
+  }, [tabId])
+
   const selectTab = useCallback((id: TabId) => {
+    if (PAGE_SEO[id].path !== window.location.pathname) {
+      window.history.pushState(null, '', PAGE_SEO[id].path + window.location.search)
+    }
     setTabId(id)
-    window.history.replaceState(null, '', `#${id}`)
   }, [])
 
   const { data: sourceData, error, loading, retry } = useDataset(tab.source)
@@ -188,8 +207,20 @@ export default function App() {
           <Tabs value={tabId} onValueChange={(v) => selectTab(v as TabId)}>
             <TabsList className="tabs flex-wrap">
               {TABS.map((t) => (
-                <TabsTrigger key={t.id} value={t.id}>
-                  {t.label}
+                <TabsTrigger key={t.id} value={t.id} asChild>
+                  {/* Real links so crawlers can follow every tab; plain clicks stay in the app. */}
+                  <a
+                    href={PAGE_SEO[t.id].path}
+                    // Radix activates tabs on mousedown; skip that for "open in new tab" clicks.
+                    onMouseDown={(e) => {
+                      if (e.metaKey || e.shiftKey || e.altKey) e.preventDefault()
+                    }}
+                    onClick={(e) => {
+                      if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) e.preventDefault()
+                    }}
+                  >
+                    {t.label}
+                  </a>
                 </TabsTrigger>
               ))}
             </TabsList>
