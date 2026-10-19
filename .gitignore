@@ -12,3 +12,7 @@
 !/.idea/
 /.idea/*
 !/.idea/runConfigurations
+
+node_modules
+dist
+server/cache
