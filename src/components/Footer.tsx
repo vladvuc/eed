@@ -4,7 +4,6 @@ import type { Source } from '../types'
 interface Props {
   source: Source
   updated: string | null
-  showKosovoNote: boolean
   notes?: string[]
   hasProjections?: boolean
 }
@@ -17,7 +16,7 @@ function formatDate(iso: string): string {
 
 const link = 'text-primary underline underline-offset-4'
 
-export function Footer({ source, updated, showKosovoNote, notes, hasProjections }: Props) {
+export function Footer({ source, updated, notes, hasProjections }: Props) {
   return (
     <footer className="footer flex flex-col gap-1 text-xs text-muted-foreground">
       {source === 'eurostat' && (
@@ -64,7 +63,8 @@ export function Footer({ source, updated, showKosovoNote, notes, hasProjections 
           {n}
         </p>
       ))}
-      {showKosovoNote && <p className="footnote max-w-[72ch]">{KOSOVO_FOOTNOTE}</p>}
+      {/* Kosovo is listed on every tab, so the disclaimer is always shown. */}
+      <p className="footnote max-w-[72ch]">{KOSOVO_FOOTNOTE}</p>
     </footer>
   )
 }

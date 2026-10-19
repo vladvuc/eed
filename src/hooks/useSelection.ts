@@ -2,65 +2,41 @@ import { useCallback, useMemo, useState } from 'react'
 
 export const MAX_SERIES = 8
 
-export type Slots = (string | null)[]
+/** Selected codes in the order they were picked (that order decides who gets a flag colour first). */
+export type Picks = string[]
 
-export function initialSlots(codes: string[]): Slots {
-  const slots: Slots = new Array(MAX_SERIES).fill(null)
-  codes.slice(0, MAX_SERIES).forEach((c, i) => {
-    slots[i] = c
-  })
-  return slots
+/** Pure transitions (exported for tests). */
+export function togglePick(prev: Picks, code: string): Picks {
+  if (prev.includes(code)) return prev.filter((c) => c !== code)
+  return prev.length >= MAX_SERIES ? prev : [...prev, code]
 }
 
-/** Pure slot transitions (exported for tests). */
-export function toggleSlot(prev: Slots, code: string): Slots {
-  const i = prev.indexOf(code)
-  const next = [...prev]
-  if (i >= 0) {
-    next[i] = null
-    return next
-  }
-  const free = prev.indexOf(null)
-  if (free < 0) return prev
-  next[free] = code
-  return next
-}
-
-export function addManySlots(prev: Slots, codes: string[]): Slots {
+export function addPicks(prev: Picks, codes: string[]): Picks {
   const next = [...prev]
   for (const code of codes) {
-    if (next.includes(code)) continue
-    const free = next.indexOf(null)
-    if (free < 0) break
-    next[free] = code
+    if (next.length >= MAX_SERIES) break
+    if (!next.includes(code)) next.push(code)
   }
   return next
 }
 
-export function removeManySlots(prev: Slots, codes: string[]): Slots {
-  return prev.map((c) => (c !== null && codes.includes(c) ? null : c))
+export function removePicks(prev: Picks, codes: string[]): Picks {
+  return prev.filter((c) => !codes.includes(c))
 }
 
-/**
- * Selected countries occupy fixed color slots (0..MAX_SERIES-1).
- * A country keeps its slot while selected; deselecting frees the slot;
- * other selections never recolor.
- */
+/** Up to MAX_SERIES selected countries, kept in pick order. */
 export function useSelection(initial: string[]) {
-  const [slots, setSlots] = useState<Slots>(() => initialSlots(initial))
+  const [selected, setSelected] = useState<Picks>(() => initial.slice(0, MAX_SERIES))
 
-  const selected = useMemo(() => slots.filter((c): c is string => c !== null), [slots])
-  const slotOf = useCallback((code: string) => slots.indexOf(code), [slots])
   const isFull = selected.length >= MAX_SERIES
 
-  const toggle = useCallback((code: string) => setSlots((prev) => toggleSlot(prev, code)), [])
-  const addMany = useCallback((codes: string[]) => setSlots((prev) => addManySlots(prev, codes)), [])
-  const removeMany = useCallback(
-    (codes: string[]) => setSlots((prev) => removeManySlots(prev, codes)),
-    [],
+  const toggle = useCallback((code: string) => setSelected((prev) => togglePick(prev, code)), [])
+  const addMany = useCallback((codes: string[]) => setSelected((prev) => addPicks(prev, codes)), [])
+  const removeMany = useCallback((codes: string[]) => setSelected((prev) => removePicks(prev, codes)), [])
+  const clearAll = useCallback(() => setSelected([]), [])
+
+  return useMemo(
+    () => ({ selected, isFull, toggle, addMany, removeMany, clearAll }),
+    [selected, isFull, toggle, addMany, removeMany, clearAll],
   )
-
-  const clearAll = useCallback(() => setSlots(new Array(MAX_SERIES).fill(null)), [])
-
-  return { slots, selected, slotOf, isFull, toggle, addMany, removeMany, clearAll }
 }

@@ -63,11 +63,13 @@ export function Controls({
       <div className="flex h-7 items-center gap-2">
         <Checkbox
           id="log-scale"
-          checked={logScale && measure.isLevel}
-          disabled={!measure.isLevel}
+          checked={logScale}
           onCheckedChange={(v) => onLogScale(v === true)}
         />
-        <Label htmlFor="log-scale" className={measure.isLevel ? '' : 'text-muted-foreground'}>
+        <Label
+          htmlFor="log-scale"
+          title={measure.isLevel ? undefined : 'Symmetric log: compresses large moves on both sides of zero, so zero and negative values stay visible'}
+        >
           Log scale
         </Label>
       </div>

@@ -63,7 +63,7 @@ export function DataTable({ periods, frequency, series, values, measure, project
               {series.map((s) => (
                 <TableHead key={s.code} className="text-right">
                   <span className="inline-flex items-center gap-1.5">
-                    <Swatch slot={s.slot} />
+                    <Swatch color={s.color} />
                     {s.name}
                   </span>
                 </TableHead>

@@ -14,6 +14,8 @@ import { DEFAULT_SELECTION, IMF_GROUPS, displayName, groupsFor, selectionKeyFor 
 import { TABS, TAB_BY_ID, isTabId } from './data/tabs'
 import { useDataset } from './hooks/useDataset'
 import { useSelection } from './hooks/useSelection'
+import { useColorScheme } from './hooks/useColorScheme'
+import { assignFlagColors } from './lib/flagColors'
 import { CUMULATIVE_SOURCE_MEASURE, deriveCumulative } from './lib/cumulative'
 import { yearOf, type TabId, type View } from './types'
 
@@ -76,6 +78,10 @@ export default function App() {
   const imfSel = useSelection(DEFAULT_SELECTION.imf)
   const sel = selectionKeyFor(tab.source) === 'eurostat' ? eurostatSel : imfSel
 
+  // Flag colours: primary, else secondary/tertiary when an earlier pick already uses that colour.
+  const scheme = useColorScheme()
+  const colors = useMemo(() => assignFlagColors(sel.selected, scheme), [sel.selected, scheme])
+
   const [tabStates, setTabStates] = useState<Partial<Record<TabId, TabState>>>({})
   const ts: TabState = tabStates[tabId] ?? {
     measure: tab.defaultMeasure,
@@ -109,10 +115,8 @@ export default function App() {
   const series = useMemo<SeriesSpec[]>(() => {
     if (!data) return []
     const labels = new Map(data.countries.map((c) => [c.code, c.name]))
-    return sel.slots
-      .map((code, slot) => (code ? { code, name: displayName(code, labels.get(code)), slot } : null))
-      .filter((s): s is SeriesSpec => s !== null)
-  }, [data, sel.slots])
+    return sel.selected.map((code) => ({ code, name: displayName(code, labels.get(code)), color: colors[code] }))
+  }, [data, sel.selected, colors])
 
   const values = useMemo(() => {
     const out: Record<string, (number | null)[]> = {}
@@ -166,7 +170,6 @@ export default function App() {
     <Footer
       source={data?.source ?? tab.source}
       updated={data?.updated ?? null}
-      showKosovoNote={data?.source === 'eurostat' && sel.selected.includes('XK')}
       notes={notes}
       hasProjections={!!data?.projectionsFrom}
     />
@@ -175,8 +178,13 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b">
-        <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 md:px-8">
-          <h1 className="text-lg font-semibold">GDP Statistika</h1>
+        {/* Same grid as the series layout below, so the title sits over the country
+            picker and the tabs line up with the chart column. */}
+        <div className="mx-auto grid w-full max-w-[1600px] items-center gap-x-6 gap-y-2 px-4 py-3 md:grid-cols-[320px_minmax(0,1fr)] md:px-8">
+          <h1 className="flex items-center gap-2 text-lg font-semibold md:justify-center">
+            <img src="/favicon.svg" alt="" className="size-7 shrink-0" />
+            European Economic Data
+          </h1>
           <Tabs value={tabId} onValueChange={(v) => selectTab(v as TabId)}>
             <TabsList className="tabs flex-wrap">
               {TABS.map((t) => (
@@ -253,7 +261,7 @@ export default function App() {
             groups={groupsFor(tab.source)}
             available={available}
             selected={sel.selected}
-            slotOf={sel.slotOf}
+            colors={colors}
             isFull={sel.isFull}
             onToggle={sel.toggle}
             onAddMany={sel.addMany}
@@ -287,13 +295,14 @@ export default function App() {
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {tab.title}
                     {series.length === 1 && measure.hasZeroBaseline ? ' · single country shown as bars per period' : ''}
+                    {ts.logScale ? (measure.isLevel ? ' · log scale' : ' · symmetric log scale (zero and negatives kept)') : ''}
                   </p>
                 </div>
                 {series.length > 0 && (
                   <ul className="legend flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted-foreground" aria-label="Legend">
                     {series.map((s) => (
                       <li key={s.code} className="inline-flex items-center gap-1.5">
-                        <Swatch slot={s.slot} line />
+                        <Swatch color={s.color} line />
                         <span>{s.name}</span>
                       </li>
                     ))}

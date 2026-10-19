@@ -1,35 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_SERIES, addManySlots, initialSlots, removeManySlots, toggleSlot } from './useSelection'
+import { MAX_SERIES, addPicks, removePicks, togglePick } from './useSelection'
 
-describe('selection colour slots', () => {
-  it('seeds the initial selection into the first slots', () => {
-    expect(initialSlots(['AL', 'XK'])).toEqual(['AL', 'XK', null, null, null, null, null, null])
+describe('selection pick order', () => {
+  it('appends new picks and removes deselected ones', () => {
+    const s = togglePick(togglePick(togglePick([], 'AL'), 'BA'), 'ME')
+    expect(s).toEqual(['AL', 'BA', 'ME'])
+    expect(togglePick(s, 'BA')).toEqual(['AL', 'ME'])
+    // a re-added country goes to the back of the queue
+    expect(togglePick(togglePick(s, 'AL'), 'AL')).toEqual(['BA', 'ME', 'AL'])
   })
 
-  it('keeps colours stable when another country is deselected', () => {
-    const s1 = initialSlots(['AL', 'BA', 'ME'])
-    const s2 = toggleSlot(s1, 'BA') // deselect the middle one
-    expect(s2[0]).toBe('AL')
-    expect(s2[1]).toBeNull()
-    expect(s2[2]).toBe('ME')
-    // the freed slot is reused by the next addition
-    expect(toggleSlot(s2, 'DE')[1]).toBe('DE')
+  it('ignores additions beyond the cap', () => {
+    const full = ['1', '2', '3', '4', '5', '6', '7', '8']
+    expect(full).toHaveLength(MAX_SERIES)
+    expect(togglePick(full, 'DE')).toBe(full)
   })
 
-  it('refuses a 9th country while full', () => {
-    const full = initialSlots(['1', '2', '3', '4', '5', '6', '7', '8'])
-    expect(full.filter(Boolean)).toHaveLength(MAX_SERIES)
-    expect(toggleSlot(full, 'DE')).toBe(full)
-  })
-
-  it('adds a group only up to the cap and skips already-selected codes', () => {
-    const s = initialSlots(['AL', 'BA'])
-    const out = addManySlots(s, ['AL', 'DE', 'FR', 'IT', 'ES', 'NL', 'PL', 'SE'])
+  it('adds a group up to the cap, skipping existing picks', () => {
+    const out = addPicks(['AL', 'BA'], ['AL', 'DE', 'FR', 'IT', 'ES', 'NL', 'PL', 'SE'])
     expect(out).toEqual(['AL', 'BA', 'DE', 'FR', 'IT', 'ES', 'NL', 'PL'])
   })
 
-  it('removes a group without touching other slots', () => {
-    const s = initialSlots(['AL', 'DE', 'BA'])
-    expect(removeManySlots(s, ['AL', 'BA'])).toEqual([null, 'DE', null, null, null, null, null, null])
+  it('removes a group and keeps the order of the rest', () => {
+    expect(removePicks(['AL', 'DE', 'BA', 'FR'], ['AL', 'BA'])).toEqual(['DE', 'FR'])
   })
 })

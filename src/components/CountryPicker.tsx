@@ -16,8 +16,10 @@ interface Props {
   groups: CountryGroup[]
   /** Codes that have at least one value for the current measure. */
   available: Set<string>
+  /** Selected codes in pick order. */
   selected: string[]
-  slotOf: (code: string) => number
+  /** Flag colour of each selected code. */
+  colors: Record<string, string>
   isFull: boolean
   onToggle: (code: string) => void
   onAddMany: (codes: string[]) => void
@@ -30,7 +32,7 @@ export function CountryPicker({
   groups,
   available,
   selected,
-  slotOf,
+  colors,
   isFull,
   onToggle,
   onAddMany,
@@ -81,19 +83,17 @@ export function CountryPicker({
         </div>
         {selected.length > 0 && (
           <ul className="selected-chips flex flex-wrap gap-1.5" aria-label="Selected countries">
-            {[...selected]
-              .sort((a, b) => slotOf(a) - slotOf(b))
-              .map((code) => (
-                <li key={code}>
-                  <Badge asChild variant="outline" className="h-6 cursor-pointer gap-1.5 bg-background pr-1 hover:bg-muted">
-                    <button type="button" onClick={() => onToggle(code)} title={`Remove ${nameOf(code)}`}>
-                      <Swatch slot={slotOf(code)} />
-                      {nameOf(code)}
-                      <XIcon className="size-3 text-muted-foreground" aria-hidden="true" />
-                    </button>
-                  </Badge>
-                </li>
-              ))}
+            {selected.map((code) => (
+              <li key={code}>
+                <Badge asChild variant="outline" className="h-6 cursor-pointer gap-1.5 bg-background pr-1 hover:bg-muted">
+                  <button type="button" onClick={() => onToggle(code)} title={`Remove ${nameOf(code)}`}>
+                    <Swatch color={colors[code]} />
+                    {nameOf(code)}
+                    <XIcon className="size-3 text-muted-foreground" aria-hidden="true" />
+                  </button>
+                </Badge>
+              </li>
+            ))}
           </ul>
         )}
         {selected.length === 0 && (
@@ -135,8 +135,7 @@ export function CountryPicker({
                 </header>
                 <ul>
                   {g.codes.map((code) => {
-                    const slot = slotOf(code)
-                    const checked = slot >= 0
+                    const checked = code in colors
                     const disabled = !checked && isFull
                     const noData = !available.has(code)
                     const id = `country-${code}`
@@ -150,7 +149,7 @@ export function CountryPicker({
                           )}
                         >
                           <Checkbox id={id} checked={checked} disabled={disabled} onCheckedChange={() => onToggle(code)} />
-                          <Swatch slot={checked ? slot : null} />
+                          <Swatch color={colors[code]} />
                           <span>{nameOf(code)}</span>
                           {noData ? (
                             <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground" title="No data for the selected measure">

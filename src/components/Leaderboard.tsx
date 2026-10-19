@@ -21,6 +21,8 @@ import { displayName } from '../data/countries'
 import type { MeasureDef } from '../data/measures'
 import { TOOLTIP_CLASS } from '../lib/chart-ui'
 import { csvCell, downloadCsv } from '../lib/csv'
+import { primaryFlagColor } from '../lib/flagColors'
+import { useColorScheme } from '../hooks/useColorScheme'
 import { rankCountries, rankLatest, type RankedRow } from '../lib/rank'
 import { niceZeroDomain } from '../lib/scale'
 import type { StatDataset, View } from '../types'
@@ -46,7 +48,9 @@ const nf1 = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 1, maximumFr
 
 /** Horizontal bar: 4px rounded data-end (right for positive, left for negative), square at the zero line. */
 function RoundedBarH(props: BarShapeProps) {
-  const { x, y, width, height, fill } = props
+  const { x, y, width, height } = props
+  // Each bar carries its country's primary flag colour on its row.
+  const fill = (props.payload as { fill?: string } | undefined)?.fill ?? props.fill
   if (height <= 0 || width === 0) return null
   const left = Math.min(x, x + width)
   const right = Math.max(x, x + width)
@@ -140,8 +144,10 @@ function LeaderboardChart({
   mode: 'period' | 'latest'
   onExclude: (code: string) => void
 }) {
+  const scheme = useColorScheme()
   const chartRows = rows.map((r) => ({
     ...r,
+    fill: primaryFlagColor(r.code, scheme),
     label: mode === 'latest' ? `${r.rank}. ${r.name} · ${r.period}` : `${r.rank}. ${r.name}`,
   }))
   const { domain, ticks } = niceZeroDomain(rows[rows.length - 1].value, rows[0].value, 6)
@@ -187,7 +193,7 @@ function LeaderboardChart({
           <ReferenceLine x={0} stroke="var(--chart-axis)" strokeWidth={1} />
           <Bar
             dataKey="value"
-            fill="var(--series-1)"
+            fill="var(--muted-foreground)"
             maxBarSize={18}
             shape={RoundedBarH}
             isAnimationActive={false}

@@ -49,6 +49,9 @@ export const DEFAULT_SELECTION: Record<SelectionKey, string[]> = {
 const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
   EU27_2020: 'European Union (27)',
   EA20: 'Euro area (20)',
+  // Eurostat already labels Kosovo "Kosovo*"; the IMF doesn't. The asterisk points to KOSOVO_FOOTNOTE.
+  XK: 'Kosovo*',
+  UVK: 'Kosovo*',
 }
 
 export function displayName(code: string, officialLabel: string | undefined): string {
@@ -56,4 +59,4 @@ export function displayName(code: string, officialLabel: string | undefined): st
 }
 
 export const KOSOVO_FOOTNOTE =
-  '* This designation is without prejudice to positions on status, and is in line with UNSCR 1244/1999 and the ICJ Opinion on the Kosovo declaration of independence.'
+  '* This designation is without prejudice to positions on status, and is in line with UNSCR 1244/1999.'

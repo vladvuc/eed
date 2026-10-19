@@ -19,7 +19,7 @@ import {
 } from 'recharts'
 import type { MeasureDef } from '../data/measures'
 import { spreadLabels } from '../lib/labels'
-import { niceZeroDomain } from '../lib/scale'
+import { niceZeroDomain, symlogDomain } from '../lib/scale'
 import { yearOf, type Frequency } from '../types'
 import { TOOLTIP_CLASS } from '../lib/chart-ui'
 import { Swatch } from './Swatch'
@@ -27,7 +27,7 @@ import { Swatch } from './Swatch'
 export interface SeriesSpec {
   code: string
   name: string
-  slot: number // 0-based color slot
+  color: string // flag colour assigned to this country
 }
 
 interface Props {
@@ -148,7 +148,9 @@ export function SeriesChart({ periods, frequency, series, values, measure, logSc
     [periods, series, values],
   )
 
+  // Levels (always positive) get a true log axis; rates that can be zero or negative get a symmetric log.
   const useLog = logScale && measure.isLevel
+  const useSymlog = logScale && !measure.isLevel
 
   const { domain, ticks } = useMemo(() => {
     let min = Infinity
@@ -163,9 +165,10 @@ export function SeriesChart({ periods, frequency, series, values, measure, logSc
     }
     if (!Number.isFinite(min)) return { domain: undefined, ticks: undefined }
     if (useLog) return logDomainAndTicks(min, max)
+    if (useSymlog) return symlogDomain(min, max)
     if (measure.hasZeroBaseline) return niceZeroDomain(min, max)
     return { domain: undefined, ticks: undefined }
-  }, [series, values, useLog, measure.hasZeroBaseline])
+  }, [series, values, useLog, useSymlog, measure.hasZeroBaseline])
 
   const xt = useMemo(() => xTicks(periods, frequency), [periods, frequency])
   const tickYear = (p: string) => String(yearOf(p))
@@ -186,7 +189,7 @@ export function SeriesChart({ periods, frequency, series, values, measure, logSc
 
   // Levels start at zero; rates get a nice zero-anchored domain (computed above).
   const linearDomain: [number | 'auto', number | 'auto'] = measure.isLevel ? [0, 'auto'] : ['auto', 'auto']
-  const hasCustomDomain = !!domain && (useLog || measure.hasZeroBaseline)
+  const hasCustomDomain = !!domain && (useLog || useSymlog || measure.hasZeroBaseline)
 
   const xAxis = (
     <XAxis
@@ -201,7 +204,7 @@ export function SeriesChart({ periods, frequency, series, values, measure, logSc
   )
   const yAxis = (
     <YAxis
-      scale={useLog ? 'log' : 'auto'}
+      scale={useLog ? 'log' : useSymlog ? 'symlog' : 'auto'}
       domain={hasCustomDomain ? domain : linearDomain}
       ticks={hasCustomDomain ? ticks : undefined}
       tickFormatter={(v: number) => measure.formatTick(v)}
@@ -245,7 +248,7 @@ export function SeriesChart({ periods, frequency, series, values, measure, logSc
             <Bar
               dataKey={s.code}
               name={s.name}
-              fill={`var(--series-${s.slot + 1})`}
+              fill={s.color}
               maxBarSize={24}
               shape={RoundedBar}
               isAnimationActive={false}
@@ -272,7 +275,7 @@ export function SeriesChart({ periods, frequency, series, values, measure, logSc
               dataKey={s.code}
               name={s.name}
               type="linear"
-              stroke={`var(--series-${s.slot + 1})`}
+              stroke={s.color}
               strokeWidth={2}
               strokeLinejoin="round"
               strokeLinecap="round"
@@ -317,7 +320,7 @@ function ChartTooltip({
             return (
               <tr key={it.code}>
                 <td className="pr-1.5 align-middle">
-                  <Swatch slot={s.slot} />
+                  <Swatch color={s.color} />
                 </td>
                 <td className="pr-3 text-muted-foreground">{s.name}</td>
                 <td className="text-right whitespace-nowrap tabular-nums">
