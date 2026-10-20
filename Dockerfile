@@ -9,7 +9,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 # Optional: overrides the public URL baked into canonical links, og:image, sitemap.xml and robots.txt
-# (default https://eed.jesuisbored.com, see src/data/seo.ts). Dokploy: Build-time Arguments.
+# (default https://eed.sveska.dev, see src/data/seo.ts). Dokploy: Build-time Arguments.
 ARG SITE_URL
 ENV SITE_URL=$SITE_URL
 # PostHog project token (public; analytics are off without it). Baked into the client here and

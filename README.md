@@ -51,7 +51,7 @@ Dokploy:
 
 1. Create **Application**, connect Git repo, set **Build type = Dockerfile**.
 2. Add domain with **container port `3001`**.
-3. Public URL defaults to `https://eed.jesuisbored.com` (`DEFAULT_SITE_URL` in `src/data/seo.ts`). For another domain, set `SITE_URL=https://other-domain.tld` under **Environment → Build-time Arguments**.
+3. Public URL defaults to `https://eed.sveska.dev` (`DEFAULT_SITE_URL` in `src/data/seo.ts`). For another domain, set `SITE_URL=https://other-domain.tld` under **Environment → Build-time Arguments**.
 4. Analytics: set `POSTHOG_PROJECT_TOKEN=phc_…` under **Environment → Build-time Arguments** (PostHog EU project "European Economic Data"). Without it nothing is sent. Open any page once with `?notrack` to stop tracking your own browser; `?notrack=0` undoes it.
 5. Optional: mount volume at **`/app/data`** to keep cached datasets across redeploys.
 6. Deploy; check preview with opengraph.xyz or LinkedIn Post Inspector.

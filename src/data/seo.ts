@@ -10,7 +10,7 @@
 export const SITE_NAME = 'European Economic Data'
 
 /** Public URL used when SITE_URL isn't set at build time (SITE_URL overrides it, e.g. for a staging domain). */
-export const DEFAULT_SITE_URL = 'https://eed.jesuisbored.com'
+export const DEFAULT_SITE_URL = 'https://eed.sveska.dev'
 
 const EUROSTAT = { name: 'Eurostat', url: 'https://ec.europa.eu/eurostat' }
 const IMF = { name: 'International Monetary Fund', url: 'https://www.imf.org' }
