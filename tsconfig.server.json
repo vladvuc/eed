@@ -25,5 +25,9 @@
   "include": [
     "server",
     "scripts"
+  ],
+  "exclude": [
+    "scripts/build-og-image.ts",
+    "scripts/wawoff2.d.ts"
   ]
 }

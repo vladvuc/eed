@@ -1,62 +1,68 @@
-# European Economic Data
+# European Economic Data — Condensed
 
-A local web app for comparing European economies. Selected countries appear as lines on the chart.
+A local web app for comparing European economies; selected countries appear as chart lines.
 
-| Tab             | Source                 | Frequency                                             | Measures                                                                                                          |
-| --------------- | ---------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Leaderboard (homepage) | WEO                    | annual                                                | all European countries ranked for one year by growth/inflation/debt, next to a map; choose the ranked countries with the Countries filter |
-| Latest quarter  | QNEA                   | quarterly                                             | countries ranked by latest quarter (y/y, q/q or nominal y/y), with previous quarter and reference period          |
-| GDP · Eurostat  | `nama_10_gdp`          | annual, 1975–                                         | current prices €/PPS, real GDP, volume index, growth                                                              |
-| GDP · IMF       | WEO via DataMapper     | annual, 1980–current year (later projections dropped) | US$, PPP, per capita                                                                                              |
-| Quarterly · IMF | QNEA                   | quarterly, 1995 Q1–latest                             | q/q and y/y real growth, nominal y/y, volume index                                                                |
-| Growth          | WEO                    | annual                                                | real GDP growth                                                                                                   |
-| Inflation       | WEO                    | annual                                                | average and end-of-period CPI change                                                                              |
-| Cumulative      | WEO                    | annual                                                | compounded real GDP growth since a base year (% change or index = 100)                                            |
-| Public debt     | WEO + Eurostat USD/EUR | annual                                                | gross debt as % of GDP in billion €/US$; net lending/borrowing % of GDP                                           |
+## Tabs
 
-IMF tabs cover all of Europe, including Ukraine, Russia, Belarus, Moldova, the Caucasus, Türkiye and microstates. On the Eurostat tab, Russia uses `naida_10_gdp` (ends 2020); its 2010-based volume index is rebased to 2015 = 100. A single country on a growth measure is drawn as bars per period.
+| Tab                | Source                 | Frequency                                             | Measures                                                                                                                      |
+| ------------------ | ---------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Leaderboard (home) | WEO                    | Annual                                                | All European countries ranked for one year by growth/inflation/debt, beside a map; Countries filter chooses ranked countries. |
+| Latest quarter     | QNEA                   | Quarterly                                             | Latest-quarter ranking (y/y, q/q or nominal y/y), with previous quarter and reference period.                                 |
+| GDP · Eurostat     | `nama_10_gdp`          | Annual, 1975–                                         | Current prices €/PPS, real GDP, volume index, growth.                                                                         |
+| GDP · IMF          | WEO via DataMapper     | Annual, 1980–current year (later projections dropped) | US$, PPP, per capita.                                                                                                         |
+| Quarterly · IMF    | QNEA                   | Quarterly, 1995 Q1–latest                             | q/q and y/y real growth, nominal y/y, volume index.                                                                           |
+| Growth             | WEO                    | Annual                                                | Real GDP growth.                                                                                                              |
+| Inflation          | WEO                    | Annual                                                | Average and end-of-period CPI change.                                                                                         |
+| Cumulative         | WEO                    | Annual                                                | Compounded real GDP growth since a base year (% change or index = 100).                                                       |
+| Public debt        | WEO + Eurostat USD/EUR | Annual                                                | Gross debt as % of GDP in bn €/US$; net lending/borrowing as % of GDP.                                                        |
+
+IMF tabs cover all of Europe, incl. Ukraine, Russia, Belarus, Moldova, Caucasus, Türkiye and microstates. Eurostat Russia uses `naida_10_gdp` (ends 2020); its 2010-based volume index is rebased to 2015 = 100. A single country on a growth measure is shown as bars per period.
 
 ## Run
 
-```
+```bash
 pnpm install
 pnpm dev          # API :3001, web app :5173
 ```
 
-Open <http://localhost:5173>. Data is fetched once, cached in memory and `server/cache/*.json` for 24 hours, and served stale if upstream is down. The Node proxy is required because the IMF quarterly endpoint lacks CORS headers.
+Open <http://localhost:5173>. Data is cached in memory and `server/cache/*.json` for 24h; stale data is served if upstream is down. The Node proxy is required because IMF quarterly lacks CORS headers.
 
 Other scripts:
 
-```
+```bash
 pnpm test         # vitest: JSON-stat normaliser tests
 pnpm build        # type-check + vite build → dist/
-pnpm start        # production: one Node process serves API and dist/ on PORT (default 3001)
+pnpm start        # production: one Node process serves API + dist/ on PORT (default 3001)
 pnpm lint         # oxlint
-pnpm build:map    # regenerate src/data/europe-map.json (only after changing scripts/build-europe-map.ts)
+pnpm build:map    # regenerate src/data/europe-map.json
+pnpm build:og     # regenerate public/og-image.png link preview
 ```
 
-## Deploy (Docker / Dokploy)
+Run `pnpm build:og` after a new IMF WEO vintage and commit the image plus `src/data/og-image.json`. The build adds a content hash (`og-image.png?v=…`) to avoid stale social-media caches.
 
-No database needed. The server downloads Eurostat/IMF data on first request, keeps it 24 hours, then refreshes on the next request.
+## Docker / Dokploy
 
-The `Dockerfile` builds the client and runs `node server/index.ts` as a non-root user, with a health check on `/api/health`.
+No database. Server downloads Eurostat/IMF data on first request, keeps it 24h, refreshes next request.
 
-Dokploy steps:
+`Dockerfile` builds the client and runs `node server/index.ts` as non-root, with health check on `/api/health`.
 
-1. Create an **Application**, connect the Git repo, set **Build type** to **Dockerfile**.
-2. Add your domain with **container port `3001`** (HTTPS via Let's Encrypt).
-3. Optional: mount a volume at **`/app/data`** so cached datasets survive redeploys.
-4. Deploy.
+Dokploy:
+
+1. Create **Application**, connect Git repo, set **Build type = Dockerfile**.
+2. Add domain with **container port `3001`**.
+3. Public URL defaults to `https://eed.jesuisbored.com` (`DEFAULT_SITE_URL` in `src/data/seo.ts`). For another domain, set `SITE_URL=https://other-domain.tld` under **Environment → Build-time Arguments**.
+4. Optional: mount volume at **`/app/data`** to keep cached datasets across redeploys.
+5. Deploy; check preview with opengraph.xyz or LinkedIn Post Inspector.
 
 Optional env vars: `PORT` (default `3001`), `CACHE_DIR` (default `/app/data` in image, `server/cache` locally). Server needs outbound HTTPS to `ec.europa.eu`, `www.imf.org`, `api.imf.org`.
 
 ## Features
 
-- Select up to 8 countries. Each uses its flag colour: primary, then secondary/tertiary if too similar to an existing pick, then a lighter/darker shade of its own flag colour. Faint colours keep hue but adjust lightness. Adding a country never recolours existing ones. Leaderboard bars use primary flag colours. Eurostat and IMF tabs have separate selections.
-- Leaderboard and Latest quarter: the ranking (left) and a map of Europe (right) share hover: hover a bar, table row or country to highlight it on both sides. Growth-type measures use red below 0, grey at 0, green above; inflation and debt use a blue ramp (log scale for amounts in €/US$). Scale ends are rounded and set at the 95th percentile so one outlier doesn't wash out the rest. No data and hidden countries are hatched. The **Countries** button (next to the year) chooses which countries are ranked: search, tick boxes, and per group *Only* / *Hide* (a popover on desktop, a bottom sheet on phones). Tapping a bar or a country only highlights it; the × in a table row hides that country.
-- Map geometry is generated once from Natural Earth 1:50m (`world-atlas`, public domain) by `scripts/build-europe-map.ts`. It's pre-projected (Lambert azimuthal equal-area, like Eurostat), shows Crimea as part of Ukraine and the whole island as Cyprus, cuts Russia east of the Caucasus, and marks microstates with dots. It loads as a separate ~70 KB (gzipped) chunk only on these two tabs.
-- Log scale for monetary measures (off by default), year range, table view with CSV download. Light/dark mode follows OS setting.
-- Quarterly growth rates are computed server-side from IMF chain-linked volume levels: q/q and index use seasonally adjusted series (not published for Russia, Belarus, Georgia, Armenia, Azerbaijan); y/y uses unadjusted series.
+- Up to 8 countries, coloured by flag colours (primary, then secondary/tertiary, then shades); adding a country never recolours existing ones. Eurostat and IMF tabs have separate selections.
+- Leaderboard and Latest quarter: ranking and map share hover highlighting. Growth: red/grey/green; inflation/debt: blue ramp. Scale ends at 95th percentile. No data/hidden countries hatched. **Countries** button: search, tick boxes, per-group _Only_ / _Hide_.
+- Map generated once from Natural Earth 1:50m (`scripts/build-europe-map.ts`), pre-projected Lambert azimuthal equal-area; loads as ~70 KB gzipped chunk only on those two tabs.
+- Log scale for monetary measures (off by default), year range, table view with CSV download, light/dark follows OS.
+- Quarterly growth computed server-side from IMF chain-linked volume levels: q/q and index use seasonally adjusted series (not published for Russia, Belarus, Georgia, Armenia, Azerbaijan); y/y uses unadjusted series.
 
 ## Structure
 
@@ -65,4 +71,4 @@ server/   Express 5 API: GET /api/eurostat, /api/imf, /api/imf-quarterly, /api/h
 src/      Vite + React 19 + Tailwind v4 + shadcn/ui + Recharts client (tabs in src/data/tabs.ts)
 ```
 
-All three endpoints return `{ source, frequency, periods, countries, measures, projectionsFrom? }`, where each measure maps country code → values aligned with `periods` (`"2024"` or `"2024-Q1"`, `null` = no data). Normalisers: `server/normalize.ts` (Eurostat JSON-stat), `server/imf.ts` (DataMapper), `server/imfq.ts` (SDMX-JSON plus growth computations).
+All three endpoints return `{ source, frequency, periods, countries, measures, projectionsFrom? }`; each measure maps country code → values aligned with `periods` (`"2024"` or `"2024-Q1"`, `null` = no data). Normalisers: `server/normalize.ts` (Eurostat JSON-stat), `server/imf.ts` (DataMapper), `server/imfq.ts` (SDMX-JSON + growth computations).

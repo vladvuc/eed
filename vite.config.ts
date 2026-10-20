@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
@@ -6,15 +8,34 @@ import { defineConfig, type Plugin } from 'vite'
 import {
   HOME_PAGE_ID,
   PAGE_SEO,
-  PLACEHOLDER_SITE_URL,
+  DEFAULT_SITE_URL,
   SEO_PAGE_IDS,
   pageIdFromPath,
   renderBody,
   renderHead,
   renderRobots,
   renderSitemap,
+  type OgImage,
   type SeoPageId,
 } from './src/data/seo.ts'
+
+/** Version (content hash) and alt text of public/og-image.png, written by `pnpm build:og`. */
+function ogImage(): OgImage {
+  const root = import.meta.dirname
+  const read = (file: string) => {
+    try {
+      return readFileSync(path.join(root, file))
+    } catch {
+      return undefined
+    }
+  }
+  const png = read('public/og-image.png')
+  const meta = read('src/data/og-image.json')
+  return {
+    version: png && createHash('sha256').update(png).digest('hex').slice(0, 8),
+    alt: meta && (JSON.parse(meta.toString('utf8')) as { alt?: string }).alt,
+  }
+}
 
 /**
  * Fills the <!--seo:head--> / <!--seo:body--> markers in index.html per tab. The build
@@ -22,19 +43,21 @@ import {
  * tab is a real, crawlable URL that a plain static file server can serve.
  */
 function seoPages(): Plugin {
-  const siteUrl = (process.env.SITE_URL ?? PLACEHOLDER_SITE_URL).replace(/\/+$/, '')
+  // `||`, not `??`: the Dockerfile sets SITE_URL to an empty string when no build argument is given.
+  const siteUrl = (process.env.SITE_URL || DEFAULT_SITE_URL).replace(/\/+$/, '')
+  const image = ogImage()
   let outDir = 'dist'
   let template = ''
 
   const render = (html: string, id: SeoPageId) =>
-    html.replace('<!--seo:head-->', renderHead(id, siteUrl)).replace('<!--seo:body-->', renderBody(id))
+    html.replace('<!--seo:head-->', renderHead(id, siteUrl, image)).replace('<!--seo:body-->', renderBody(id))
 
   return {
     name: 'seo-pages',
     configResolved(config) {
       outDir = path.resolve(config.root, config.build.outDir)
       if (config.command === 'build' && !process.env.SITE_URL) {
-        config.logger.warn(`[seo] SITE_URL is not set; canonical URLs and sitemap.xml use ${PLACEHOLDER_SITE_URL}`)
+        config.logger.info(`[seo] SITE_URL is not set; canonical URLs, og:image and sitemap.xml use ${DEFAULT_SITE_URL}`)
       }
     },
     transformIndexHtml: {
