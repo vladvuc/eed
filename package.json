@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "lint": "oxlint",
-    "build:og": "tsx scripts/build-og-image.ts"
+    "build:og": "tsx scripts/build-og-image.ts",
+    "snapshot:imf": "node scripts/snapshot-imf.ts"
   },
   "dependencies": {
     "compression": "^1.8.2",

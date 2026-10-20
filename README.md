@@ -36,6 +36,7 @@ pnpm start        # production: one Node process serves API + dist/ on PORT (def
 pnpm lint         # oxlint
 pnpm build:map    # regenerate src/data/europe-map.json
 pnpm build:og     # regenerate public/og-image.png link preview
+pnpm snapshot:imf # refresh server/seed/imf.json, the IMF fallback snapshot
 ```
 
 Run `pnpm build:og` after a new IMF WEO vintage and commit the image plus `src/data/og-image.json`. The build adds a content hash (`og-image.png?v=…`) to avoid stale social-media caches.
@@ -53,6 +54,8 @@ Dokploy:
 3. Public URL defaults to `https://eed.jesuisbored.com` (`DEFAULT_SITE_URL` in `src/data/seo.ts`). For another domain, set `SITE_URL=https://other-domain.tld` under **Environment → Build-time Arguments**.
 4. Optional: mount volume at **`/app/data`** to keep cached datasets across redeploys.
 5. Deploy; check preview with opengraph.xyz or LinkedIn Post Inspector.
+
+`www.imf.org` (IMF annual data) sits behind Akamai, which blocks many server IPs. Then `/api/imf` serves the snapshot in `server/seed/imf.json` (header `X-Cache: seed`) and retries upstream every 10 minutes. Run `pnpm snapshot:imf` after each WEO release (April, October) and commit the file.
 
 Optional env vars: `PORT` (default `3001`), `CACHE_DIR` (default `/app/data` in image, `server/cache` locally). Server needs outbound HTTPS to `ec.europa.eu`, `www.imf.org`, `api.imf.org`.
 

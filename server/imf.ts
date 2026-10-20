@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { createCachedLoader } from './cache.ts'
 import { fetchUsdPerEur, type FxRates } from './fx.ts'
 import type {
@@ -188,7 +189,7 @@ async function getJson<T>(url: string): Promise<T> {
   return (await res.json()) as T
 }
 
-async function fetchFromImf(): Promise<StatDataset> {
+export async function fetchFromImf(): Promise<StatDataset> {
   const started = Date.now()
   const [indicators, countries, rates, ...payloads] = await Promise.all([
     getJson<ImfIndicatorsPayload>(`${BASE}/indicators`),
@@ -218,4 +219,7 @@ async function fetchFromImf(): Promise<StatDataset> {
   return data
 }
 
-export const getImf = createCachedLoader<StatDataset>('imf', fetchFromImf)
+/** IMF DataMapper sits behind Akamai, which can block server IPs; the snapshot (`pnpm snapshot:imf`) covers that. */
+export const IMF_SEED_FILE = path.join(import.meta.dirname, 'seed', 'imf.json')
+
+export const getImf = createCachedLoader<StatDataset>('imf', fetchFromImf, { seedFile: IMF_SEED_FILE })
