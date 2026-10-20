@@ -119,6 +119,23 @@ export interface UnTables {
   usdPerEur?: Record<string, number>
 }
 
+/**
+ * Years whose GDP deflator (inflation) is shown as no data: the UN's national-currency GDP isn't in
+ * one currency across the year and the year before, so the ratio measures a currency switch, not prices.
+ *  - Serbia: 1993 is in different dinar units from 1992 and 1994 (the 1993–94 redenominations),
+ *    which would give 222 billion % for 1993 and 3 % for 1994.
+ *  - Montenegro, Kosovo: in euro throughout, converted from dinars at market rates until the
+ *    Deutsche Mark took over in late 1999, so years up to 2000 would show e.g. −41 % in 1996.
+ */
+export const UNRELIABLE_DEFLATOR: Record<string, (year: number) => boolean> = {
+  SRB: (y) => y === 1993 || y === 1994,
+  MNE: (y) => y <= 2000,
+  UVK: (y) => y <= 2000,
+}
+
+export const UNRELIABLE_DEFLATOR_NOTE =
+  'Inflation not shown for Serbia in 1993–94, or for Montenegro and Kosovo before 2001: the UN figures for those years mix currency units.'
+
 /** Same shape as the app's StatDataset (src/types.ts). */
 export interface UnDataset {
   source: 'un'
@@ -180,8 +197,9 @@ export function buildUnDataset(t: UnTables, downloadedOn: string): UnDataset {
   const defl: Record<string, Series> = Object.fromEntries(
     Object.keys(real).map((c) => [
       c,
-      years.map((_, i) => {
+      years.map((year, i) => {
         const n = ncu[c][i], nPrev = ncu[c][i - 1], g = rpch[c][i]
+        if (UNRELIABLE_DEFLATOR[c]?.(year)) return null
         return n !== null && nPrev && g !== null ? ((n / nPrev) / (1 + g / 100) - 1) * 100 : null
       }),
     ]),
@@ -211,9 +229,11 @@ export function buildUnDataset(t: UnTables, downloadedOn: string): UnDataset {
       pc[fed.code][i] = g !== null && p ? (g * 1e9) / p : null
       // Within the successors' own series, so the break between the two sources isn't counted as growth.
       rpch[fed.code][i] = r !== null && rPrev ? (r / rPrev - 1) * 100 : null
-      // Successors use different currencies: average their inflation, weighted by GDP in US$.
-      const weighted = sumAll(succ.map((c) => (defl[c][i] !== null && gdp[c][i] !== null ? defl[c][i]! * gdp[c][i]! : null)))
-      defl[fed.code][i] = weighted !== null && g ? weighted / g : null
+      // Successors use different currencies: average their inflation, weighted by GDP in US$, over the
+      // successors that have a figure (Montenegro and Kosovo have none for these years).
+      const priced = succ.filter((c) => defl[c][i] !== null && gdp[c][i] !== null)
+      const pricedGdp = priced.reduce((a, c) => a + gdp[c][i]!, 0)
+      defl[fed.code][i] = pricedGdp ? priced.reduce((a, c) => a + defl[c][i]! * gdp[c][i]!, 0) / pricedGdp : null
     }
     former.push({ code: fed.code, lastYear: fed.lastYear, successors: succ.filter((c) => !(c in EXTRA_M49)) })
   }
@@ -247,6 +267,7 @@ export function buildUnDataset(t: UnTables, downloadedOn: string): UnDataset {
         .map((f) => `${nameOf(f.code)} ${f.lastYear}`)
         .join(', ')}). Their inflation is the GDP deflator.`,
       'Real GDP growth is computed from GDP at constant 2020 prices; inflation from the GDP deflator.',
+      UNRELIABLE_DEFLATOR_NOTE,
     ],
     former,
   }

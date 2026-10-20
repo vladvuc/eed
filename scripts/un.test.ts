@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildUnDataset, tableFromSheet, type UnTable } from './un.ts'
+import { UNRELIABLE_DEFLATOR_NOTE, buildUnDataset, tableFromSheet, type UnTable } from './un.ts'
 
 // Yugoslavia (890) reported until 1990, its 7 successors from 1990; the federation is shown until 1992.
 const YEARS = [1989, 1990, 1991, 1992, 1993]
@@ -41,6 +41,20 @@ describe('buildUnDataset', () => {
     // Combined: the successors' own inflation, weighted by GDP in US$ (all equal here).
     expect(at('UN_DEFL_PCH', 'YUG', 1991)).toBeCloseTo((1.5 / (18 / 20) - 1) * 100)
     expect(at('UN_DEFL_PCH', 'YUG', 1993)).toBeNull()
+  })
+
+  it('shows no inflation where the UN national-currency series mixes currency units', () => {
+    // Serbia's 1993 dinars and Montenegro's/Kosovo's pre-2001 euro conversions (see UNRELIABLE_DEFLATOR).
+    expect(at('UN_DEFL_PCH', 'SRB', 1993)).toBeNull()
+    expect(at('UN_DEFL_PCH', 'MNE', 1991)).toBeNull()
+    expect(at('UN_DEFL_PCH', 'UVK', 1992)).toBeNull()
+    // Other years and countries keep their figures, and growth is unaffected.
+    expect(at('UN_DEFL_PCH', 'SRB', 1991)).toBeCloseTo((1.5 / (18 / 20) - 1) * 100)
+    expect(at('UN_DEFL_PCH', 'HRV', 1993)).toBeCloseTo((1 / (15 / 16) - 1) * 100)
+    expect(at('UN_NGDP_RPCH', 'SRB', 1993)).toBeCloseTo((15 / 16 - 1) * 100)
+    // Yugoslavia averages the successors that have a figure instead of dropping the year.
+    expect(at('UN_DEFL_PCH', 'YUG', 1992)).toBeCloseTo((1 / (16 / 18) - 1) * 100)
+    expect(ds.notes).toContain(UNRELIABLE_DEFLATOR_NOTE)
   })
 
   it('takes growth from one source on each side of the switch', () => {

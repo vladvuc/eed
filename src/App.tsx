@@ -249,6 +249,7 @@ export default function App() {
     () =>
       data?.notes?.filter((n) => {
         if (n.startsWith('Debt in')) return measure.code.startsWith('GGXWDG_')
+        if (n.startsWith('Inflation not shown')) return measure.code === 'UN_DEFL_PCH'
         if (n.startsWith(FORMER_NOTE_PREFIX)) return showFormerNote
         return true
       }) ?? undefined,
