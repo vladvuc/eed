@@ -1,5 +1,5 @@
 import { createCachedLoader } from './cache.ts'
-import { IMF_EUROPE } from './imf.ts'
+import { IMF_EUROPE, IMF_NAMES } from './imf.ts'
 import type { SdmxJsonData, Series, StatDataset } from './types.ts'
 
 /**
@@ -167,28 +167,14 @@ async function fetchKey(key: string): Promise<SdmxJsonData> {
 async function fetchFromQnea(): Promise<StatDataset> {
   const started = Date.now()
   const keys = Object.keys(QNEA_KEYS) as QneaKey[]
-  const [countriesRes, ...msgs] = await Promise.all([
-    fetch('https://www.imf.org/external/datamapper/api/v1/countries', {
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    }),
-    ...keys.map((k) => fetchKey(QNEA_KEYS[k])),
-  ])
+  const msgs = await Promise.all(keys.map((k) => fetchKey(QNEA_KEYS[k])))
 
   const levels = {} as QneaRaw['levels']
   keys.forEach((k, i) => {
     levels[k] = parseSdmxJson(msgs[i])
   })
 
-  let countryLabels: Record<string, string> = {}
-  if (countriesRes.ok) {
-    const json = (await countriesRes.json()) as { countries: Record<string, { label?: string | null }> }
-    countryLabels = Object.fromEntries(
-      Object.entries(json.countries).map(([c, v]) => [c, (v?.label ?? c).trim()]),
-    )
-  }
-  Object.assign(countryLabels, { RUS: 'Russia', TUR: 'Türkiye' })
-
-  const data = normalizeQnea({ levels, countryLabels, fetchedAt: new Date().toISOString() })
+  const data = normalizeQnea({ levels, countryLabels: IMF_NAMES, fetchedAt: new Date().toISOString() })
   console.log(
     `[imf-quarterly] fetched ${keys.length} series × ${data.countries.length} economies, ${data.periods[0]}–${data.periods.at(-1)} in ${Date.now() - started} ms`,
   )

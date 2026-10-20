@@ -35,12 +35,22 @@ export const IMF_EUROPE: string[] = [
   'EU','EURO','EDE',
 ]
 
-const NAME_OVERRIDES: Record<string, string> = {
-  RUS: 'Russia',
-  TUR: 'Türkiye',
-  EU: 'European Union',
-  EURO: 'Euro area',
-  EDE: 'Emerging & developing Europe',
+/**
+ * Names for IMF_EUROPE, as the IMF labels them (except Russia and Türkiye). Bundled rather than read from
+ * DataMapper's /countries, because www.imf.org blocks many server IPs; the quarterly tab relies on them.
+ */
+export const IMF_NAMES: Record<string, string> = {
+  AUT: 'Austria', BEL: 'Belgium', BGR: 'Bulgaria', HRV: 'Croatia', CYP: 'Cyprus', CZE: 'Czech Republic',
+  DNK: 'Denmark', EST: 'Estonia', FIN: 'Finland', FRA: 'France', DEU: 'Germany', GRC: 'Greece',
+  HUN: 'Hungary', IRL: 'Ireland', ITA: 'Italy', LVA: 'Latvia', LTU: 'Lithuania', LUX: 'Luxembourg',
+  MLT: 'Malta', NLD: 'Netherlands', POL: 'Poland', PRT: 'Portugal', ROU: 'Romania', SVK: 'Slovak Republic',
+  SVN: 'Slovenia', ESP: 'Spain', SWE: 'Sweden',
+  ALB: 'Albania', BIH: 'Bosnia and Herzegovina', MNE: 'Montenegro', MKD: 'North Macedonia', SRB: 'Serbia', UVK: 'Kosovo',
+  ISL: 'Iceland', LIE: 'Liechtenstein', NOR: 'Norway', CHE: 'Switzerland', GBR: 'United Kingdom',
+  UKR: 'Ukraine', RUS: 'Russia', BLR: 'Belarus', MDA: 'Moldova',
+  GEO: 'Georgia', ARM: 'Armenia', AZE: 'Azerbaijan', TUR: 'Türkiye',
+  AND: 'Andorra', SMR: 'San Marino', MCO: 'Monaco',
+  EU: 'European Union', EURO: 'Euro area', EDE: 'Emerging & developing Europe',
 }
 
 export interface ImfRaw {
@@ -105,7 +115,7 @@ export function normalizeImf(raw: ImfRaw, keep: string[] = IMF_EUROPE): StatData
     .filter((c) => present.has(c))
     .map((code) => ({
       code,
-      name: NAME_OVERRIDES[code] ?? (raw.countryLabels[code] ?? code).trim(),
+      name: IMF_NAMES[code] ?? (raw.countryLabels[code] ?? code).trim(),
     }))
 
   const measures: Record<string, Record<string, Series>> = {}

@@ -1,10 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { deriveDebtLevels, lastYear, normalizeImf, projectionsFromVintage, truncateToYear, type ImfRaw } from './imf.ts'
+import {
+  deriveDebtLevels,
+  IMF_EUROPE,
+  IMF_NAMES,
+  lastYear,
+  normalizeImf,
+  projectionsFromVintage,
+  truncateToYear,
+  type ImfRaw,
+} from './imf.ts'
 import fixture from './__fixtures__/imf.small.json' with { type: 'json' }
 
 // Real DataMapper values for NGDPD + GGXWDG_NGDP, trimmed to a few economies and years.
 const raw = fixture as unknown as ImfRaw
 const out = normalizeImf(raw)
+
+describe('IMF_NAMES', () => {
+  // The quarterly tab has no other source of names (www.imf.org blocks many server IPs).
+  it('names every European economy', () => {
+    for (const code of IMF_EUROPE) expect(IMF_NAMES[code], code).toBeTruthy()
+  })
+})
 
 describe('normalizeImf (DataMapper → compact dataset)', () => {
   it('keeps only European economies, in the configured order, with display names', () => {
