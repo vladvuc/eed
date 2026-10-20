@@ -48,9 +48,9 @@ export function Controls({
         </Field>
       )}
 
-      <Field label="Measure" htmlFor="measure">
+      <Field label="Measure" htmlFor="measure" className="max-md:w-full">
         <Select value={measure.code} onValueChange={onMeasure}>
-          <SelectTrigger id="measure" size="sm" className="max-w-[26rem]">
+          <SelectTrigger id="measure" size="sm" className="max-w-[26rem] max-md:w-full max-md:max-w-none">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

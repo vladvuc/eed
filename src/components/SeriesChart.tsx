@@ -18,6 +18,7 @@ import {
   type TooltipContentProps,
 } from 'recharts'
 import type { MeasureDef } from '../data/measures'
+import { useIsCompact } from '../hooks/useIsCompact'
 import { spreadLabels } from '../lib/labels'
 import { niceZeroDomain, symlogDomain } from '../lib/scale'
 import { yearOf, type Frequency } from '../types'
@@ -43,6 +44,7 @@ interface Props {
 type Row = { period: string } & Record<string, number | null | string>
 
 const CHART_HEIGHT = 460
+const COMPACT_CHART_HEIGHT = 320 // phones
 const LABEL_GAP = 13 // px between stacked end labels
 
 /** Direct end labels for every line: country code at the last data point, nudged apart on collision. */
@@ -113,9 +115,8 @@ function logDomainAndTicks(min: number, max: number): { domain: [number, number]
 }
 
 /** Pick x ticks: one per year (or every n-th year) so labels never collide. */
-function xTicks(periods: string[], frequency: Frequency): string[] {
+function xTicks(periods: string[], frequency: Frequency, maxTicks: number): string[] {
   const firstOfYear = frequency === 'Q' ? periods.filter((p) => p.endsWith('-Q1')) : periods
-  const maxTicks = 14
   const step = Math.max(1, Math.ceil(firstOfYear.length / maxTicks))
   const nice = step <= 1 ? 1 : step <= 2 ? 2 : step <= 5 ? 5 : 10
   return firstOfYear.filter((p) => yearOf(p) % nice === 0)
@@ -138,6 +139,8 @@ function RoundedBar(props: BarShapeProps) {
 }
 
 export function SeriesChart({ periods, frequency, series, values, measure, logScale, projectionsFrom }: Props) {
+  const compact = useIsCompact()
+  const height = compact ? COMPACT_CHART_HEIGHT : CHART_HEIGHT
   const rows = useMemo<Row[]>(
     () =>
       periods.map((period, i) => {
@@ -170,7 +173,7 @@ export function SeriesChart({ periods, frequency, series, values, measure, logSc
     return { domain: undefined, ticks: undefined }
   }, [series, values, useLog, useSymlog, measure.hasZeroBaseline])
 
-  const xt = useMemo(() => xTicks(periods, frequency), [periods, frequency])
+  const xt = useMemo(() => xTicks(periods, frequency, compact ? 6 : 14), [periods, frequency, compact])
   const tickYear = (p: string) => String(yearOf(p))
 
   if (series.length === 0) {
@@ -196,7 +199,7 @@ export function SeriesChart({ periods, frequency, series, values, measure, logSc
       dataKey="period"
       ticks={xt}
       tickFormatter={tickYear}
-      tick={{ fill: 'var(--chart-ink-muted)', fontSize: 12 }}
+      tick={{ fill: 'var(--chart-ink-muted)', fontSize: compact ? 11 : 12 }}
       tickLine={false}
       axisLine={{ stroke: 'var(--chart-axis)' }}
       interval={0}
@@ -208,10 +211,10 @@ export function SeriesChart({ periods, frequency, series, values, measure, logSc
       domain={hasCustomDomain ? domain : linearDomain}
       ticks={hasCustomDomain ? ticks : undefined}
       tickFormatter={(v: number) => measure.formatTick(v)}
-      tick={{ fill: 'var(--chart-ink-muted)', fontSize: 12 }}
+      tick={{ fill: 'var(--chart-ink-muted)', fontSize: compact ? 11 : 12 }}
       tickLine={false}
       axisLine={false}
-      width={72}
+      width={compact ? 52 : 72}
       allowDataOverflow={useLog}
     />
   )
@@ -232,13 +235,13 @@ export function SeriesChart({ periods, frequency, series, values, measure, logSc
       content={(p: TooltipContentProps) => <ChartTooltip {...p} measure={measure} series={series} />}
     />
   )
-  const margin = { top: 12, right: singleBars ? 16 : 56, bottom: 4, left: 8 }
+  const margin = { top: 12, right: singleBars ? (compact ? 8 : 16) : compact ? 40 : 56, bottom: 4, left: compact ? 0 : 8 }
 
   if (singleBars) {
     const s = series[0]
     return (
       <div className="chart">
-        <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+        <ResponsiveContainer width="100%" height={height}>
           <BarChart data={rows} margin={margin} barCategoryGap="20%">
             <CartesianGrid stroke="var(--chart-grid)" strokeWidth={1} vertical={false} />
             {xAxis}
@@ -262,7 +265,7 @@ export function SeriesChart({ periods, frequency, series, values, measure, logSc
 
   return (
     <div className="chart">
-      <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+      <ResponsiveContainer width="100%" height={height}>
         <LineChart data={rows} margin={margin}>
           <CartesianGrid stroke="var(--chart-grid)" strokeWidth={1} vertical={false} />
           {xAxis}

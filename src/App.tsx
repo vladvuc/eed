@@ -4,20 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CountryPicker } from './components/CountryPicker'
 import { Controls } from './components/Controls'
+import { CountryFilter } from './components/CountryFilter'
 import { DataTable } from './components/DataTable'
 import { Footer } from './components/Footer'
 import { Leaderboard } from './components/Leaderboard'
+import { MobileNav } from './components/MobileNav'
 import { LeaderboardControls } from './components/LeaderboardControls'
 import { SeriesChart, type SeriesSpec } from './components/SeriesChart'
 import { Swatch } from './components/Swatch'
 import { DEFAULT_SELECTION, IMF_GROUPS, displayName, groupsFor, selectionKeyFor } from './data/countries'
-import { PAGE_SEO, pageIdFromPath } from './data/seo'
+import { HOME_PAGE_ID, PAGE_SEO, pageIdFromPath } from './data/seo'
 import { TABS, TAB_BY_ID, isTabId } from './data/tabs'
 import { useDataset } from './hooks/useDataset'
 import { useSelection } from './hooks/useSelection'
 import { useColorScheme } from './hooks/useColorScheme'
 import { assignFlagColors } from './lib/flagColors'
 import { CUMULATIVE_SOURCE_MEASURE, deriveCumulative } from './lib/cumulative'
+import { filterGroups, setShown } from './lib/countryFilter'
 import {
   FORMER_NOTE_PREFIX,
   activeFormer,
@@ -53,7 +56,6 @@ function readExcluded(): string[] {
 }
 
 const SOURCE_NAMES: Record<Source, string> = { eurostat: 'Eurostat', imf: 'IMF', 'imf-quarterly': 'IMF', un: 'UN' }
-const UN_LEADERBOARD_TITLE = 'All European countries ranked for one year — UN national accounts'
 const LEADERBOARD_FROM_YEAR = 1975
 
 /** Every IMF country (no aggregates) for the leaderboard. */
@@ -64,7 +66,7 @@ function readUrlTab(): TabId {
   const h = window.location.hash.replace(/^#/, '')
   if (isTabId(h)) return h
   const fromPath = pageIdFromPath(window.location.pathname)
-  return fromPath && isTabId(fromPath) ? fromPath : 'eurostat'
+  return fromPath && isTabId(fromPath) ? fromPath : HOME_PAGE_ID
 }
 
 export default function App() {
@@ -97,7 +99,7 @@ export default function App() {
     setTabId(id)
   }, [])
 
-  // Leaderboard "pool": countries taken out of the ranking. Survives reloads.
+  // Leaderboard: countries hidden from the ranking (Countries filter). Survives reloads.
   const [excluded, setExcluded] = useState<string[]>(readExcluded)
   useEffect(() => {
     window.localStorage.setItem(EXCLUDED_KEY, JSON.stringify(excluded))
@@ -193,6 +195,17 @@ export default function App() {
     return [...kept, ...formerNow.map((f) => f.code).filter((c) => !kept.includes(c))]
   }, [dataSource, sourceData, successorOf, formerNow])
 
+  // Leaderboard "Countries" filter: this year's rankable countries, by group, and which are hidden.
+  const filterCountries = useMemo(() => {
+    const labels = new Map(data?.countries.map((c) => [c.code, c.name]))
+    return leaderboardCodes.map((code) => ({ code, name: displayName(code, labels.get(code)) }))
+  }, [data, leaderboardCodes])
+  const filterGroupList = useMemo(
+    () => filterGroups(leaderboardCodes, IMF_GROUPS.filter((g) => g.id !== 'agg'), data?.former?.map((f) => f.code) ?? []),
+    [leaderboardCodes, data],
+  )
+  const hidden = useMemo(() => excluded.filter((c) => leaderboardCodes.includes(c)), [excluded, leaderboardCodes])
+
   // Series: a "Former countries" group while the range starts before the last split.
   const formerUntil = tab.formerCountries ? lastFormerYear(data) : null
   const groups = useMemo(() => {
@@ -257,12 +270,16 @@ export default function App() {
       <header className="border-b">
         {/* Same grid as the series layout below, so the title sits over the country
             picker and the tabs line up with the chart column. */}
-        <div className="mx-auto grid w-full max-w-[1600px] items-center gap-x-6 gap-y-2 px-4 py-3 md:grid-cols-[320px_minmax(0,1fr)] md:px-8">
-          <h1 className="flex items-center gap-2 text-lg font-semibold md:justify-center">
-            <img src="/favicon.svg" alt="" className="size-7 shrink-0" />
-            European Economic Data
-          </h1>
-          <Tabs value={tabId} onValueChange={(v) => selectTab(v as TabId)}>
+        <div className="mx-auto grid w-full max-w-[1600px] items-center gap-x-6 gap-y-2 px-4 py-2 md:grid-cols-[320px_minmax(0,1fr)] md:px-8 md:py-3">
+          <div className="flex min-w-0 items-center gap-1 md:justify-center">
+            {/* Phones: the tabs live in a side menu. */}
+            <MobileNav active={tabId} onSelect={selectTab} />
+            <h1 className="flex items-center gap-2 text-base font-semibold md:text-lg">
+              <img src="/favicon.svg" alt="" className="size-6 shrink-0 md:size-7" />
+              European Economic Data
+            </h1>
+          </div>
+          <Tabs value={tabId} onValueChange={(v) => selectTab(v as TabId)} className="max-md:hidden">
             <TabsList className="tabs flex-wrap">
               {TABS.map((t) => (
                 <TabsTrigger key={t.id} value={t.id} asChild>
@@ -311,29 +328,32 @@ export default function App() {
             view={ts.view}
             onView={(v) => patch({ view: v })}
             downloadName={`${downloadPrefix}${tab.rankMode === 'latest' ? '' : `_${period}`}.png`}
+            countryFilter={
+              <CountryFilter countries={filterCountries} groups={filterGroupList} hidden={hidden} onChange={setExcluded} />
+            }
           />
           <div className="flex flex-col gap-4" data-export-root>
             <Leaderboard
               data={data}
               codes={leaderboardCodes.filter((c) => !excluded.includes(c))}
               successorOf={successorOf}
-              excluded={excluded}
+              excluded={hidden}
               onExclude={(code) => setExcluded((xs) => (xs.includes(code) ? xs : [...xs, code]))}
-              onRestore={(code) => setExcluded((xs) => xs.filter((c) => c !== code))}
-              onRestoreAll={() => setExcluded([])}
-              onExcludeAll={() => setExcluded((xs) => [...xs, ...leaderboardCodes.filter((c) => !xs.includes(c))])}
+              onRestoreAll={() => setExcluded((xs) => setShown(xs, leaderboardCodes, true))}
               measure={measure}
               period={period}
               mode={tab.rankMode ?? 'period'}
               view={ts.view}
               title={`${measure.label}${tab.rankMode === 'latest' ? ' — latest quarter' : ` — ${period}`}`}
-              subtitle={`${dataSource === 'un' ? UN_LEADERBOARD_TITLE : tab.title} · biggest value first${
-                tab.rankMode !== 'latest' && data.projectionsFrom && period >= data.projectionsFrom ? ' · IMF projection' : ''
-              }${
+              // Only caveats about where this year's figures come from; the source is in the footer.
+              subtitle={[
+                tab.rankMode !== 'latest' && data.projectionsFrom && period >= data.projectionsFrom ? 'IMF projection' : '',
                 data.unBefore && period < data.unBefore
-                  ? ` · ${period}: UN national accounts${measure.code === 'PCPIPCH' ? ' (GDP deflator)' : ''}`
-                  : ''
-              }`}
+                  ? `${period}: UN national accounts${measure.code === 'PCPIPCH' ? ' (GDP deflator)' : ''}`
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             />
             {footer}
           </div>

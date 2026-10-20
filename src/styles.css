@@ -159,8 +159,10 @@
 .chart svg {
   overflow: visible;
 }
-.leaderboard-chart .recharts-bar-rectangle {
-  cursor: pointer;
+/* Recharts makes the chart focusable (arrow keys move the tooltip); clicking it shouldn't draw a
+   focus frame around the plot. Keyboard users still see the tooltip move. */
+.chart :focus {
+  outline: none;
 }
 
 /* Pre-rendered page summary (src/data/seo.ts) shown until React mounts and replaces it. */

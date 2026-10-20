@@ -12,7 +12,6 @@ import {
   type BarShapeProps,
   type TooltipContentProps,
 } from 'recharts'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -23,25 +22,24 @@ import { TOOLTIP_CLASS } from '../lib/chart-ui'
 import { csvCell, downloadCsv } from '../lib/csv'
 import { primaryFlagColor } from '../lib/flagColors'
 import { useColorScheme } from '../hooks/useColorScheme'
+import { useIsCompact } from '../hooks/useIsCompact'
 import { rankCountries, rankLatest, type RankedRow } from '../lib/rank'
 import { niceZeroDomain } from '../lib/scale'
+import { shortQuarter } from '../lib/labels'
 import { mapScale } from '../lib/mapScale'
 import { EuropeMap, type MapDatum } from './EuropeMap'
 import type { StatDataset, View } from '../types'
 
 interface Props {
   data: StatDataset
-  /** Country codes to rank (aggregates and the pool excluded by the caller). */
+  /** Country codes to rank (aggregates and hidden countries left out by the caller). */
   codes: string[]
   /** Successor state → former country ranked in its place this year (drawn as one on the map). */
   successorOf?: Record<string, string>
-  /** Codes parked in the pool, in the order they were excluded. */
+  /** Rankable codes the user hid (via the Countries filter or a table row's ×). */
   excluded: string[]
   onExclude: (code: string) => void
-  onRestore: (code: string) => void
   onRestoreAll: () => void
-  /** Move every country to the pool (then pick a few back, e.g. from the map). */
-  onExcludeAll: () => void
   measure: MeasureDef
   /** Ranked period (ignored in 'latest' mode). */
   period: string
@@ -49,11 +47,13 @@ interface Props {
   view: View
   /** Card heading for the ranking (left half). */
   title: ReactNode
-  subtitle: ReactNode
+  /** Shown under the title when not empty. */
+  subtitle?: string
 }
 
 const ROW_HEIGHT = 24
-const POOL_COLLAPSE_AT = 12
+/** Rough width of one character of an 11 px label (SN Pro), for sizing the phone name column. */
+const COMPACT_CHAR_PX = 5.8
 const nf1 = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: 'always' })
 
 /** Horizontal bar: 4px rounded data-end (right for positive, left for negative), square at the zero line. */
@@ -81,9 +81,7 @@ export function Leaderboard({
   successorOf,
   excluded,
   onExclude,
-  onRestore,
   onRestoreAll,
-  onExcludeAll,
   measure,
   period,
   mode,
@@ -129,57 +127,14 @@ export function Leaderboard({
     [rows, measure, scheme],
   )
 
-  // A long pool (e.g. after "Remove all") collapses to a count so it doesn't push the ranking down.
-  const [poolOpen, setPoolOpen] = useState(false)
-  const collapsed = excluded.length > POOL_COLLAPSE_AT && !poolOpen
-
-  const pool = (
-    <div
-      className="pool flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-dashed px-3 py-2"
-      aria-label="Excluded countries"
-      data-export-ignore
-    >
-      <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Pool</span>
-      {excluded.length === 0 ? (
-        <span className="flex-1 text-xs text-muted-foreground">
-          Click a bar, a table row or a country on the map to leave it out of the ranking.
-        </span>
-      ) : collapsed ? (
-        <span className="flex-1 text-xs text-muted-foreground">
-          {excluded.length} countries · click them on the map to put them back{' '}
-          <Button variant="link" size="xs" className="h-auto p-0" onClick={() => setPoolOpen(true)}>
-            Show
-          </Button>
-        </span>
-      ) : (
-        <ul className="flex flex-1 flex-wrap gap-1.5">
-          {excluded.map((code) => (
-            <li key={code}>
-              <Badge asChild variant="outline" className="chip cursor-pointer bg-card hover:bg-muted">
-                <button type="button" onClick={() => onRestore(code)} title="Put back into the ranking">
-                  {nameOf(code)} <span aria-hidden="true">↩</span>
-                </button>
-              </Badge>
-            </li>
-          ))}
-          {excluded.length > POOL_COLLAPSE_AT && (
-            <li>
-              <Button variant="link" size="xs" className="h-6 p-0" onClick={() => setPoolOpen(false)}>
-                Hide
-              </Button>
-            </li>
-          )}
-        </ul>
-      )}
-      <div className="ml-auto flex items-center gap-3">
-        <Button variant="link" size="xs" className="h-auto p-0" onClick={onExcludeAll} disabled={rows.length === 0}>
-          Remove all
-        </Button>
-        <Button variant="link" size="xs" className="h-auto p-0" onClick={onRestoreAll} disabled={excluded.length === 0}>
-          Restore all
-        </Button>
-      </div>
-    </div>
+  // Hidden countries are chosen in the Countries filter (LeaderboardControls); here just a count.
+  const hiddenNote = excluded.length > 0 && (
+    <p className="text-xs text-muted-foreground" data-export-ignore>
+      {excluded.length === 1 ? `${nameOf(excluded[0])} is hidden` : `${excluded.length} countries hidden`} ·{' '}
+      <Button variant="link" size="xs" className="h-auto p-0" onClick={onRestoreAll}>
+        Show all
+      </Button>
+    </p>
   )
 
   let body: ReactNode
@@ -188,7 +143,7 @@ export function Leaderboard({
       <div className="grid min-h-60 place-items-center text-muted-foreground">
         <p>
           {codes.length === 0
-            ? 'Every country is in the pool. Click countries on the map to add them back.'
+            ? 'Every country is hidden. Choose some under “Countries”.'
             : `No data for ${period}.`}
         </p>
       </div>
@@ -196,20 +151,18 @@ export function Leaderboard({
   } else if (view === 'table') {
     body = <LeaderboardTable rows={rows} measure={measure} mode={mode} onExclude={onExclude} hovered={hovered} onHover={setHovered} />
   } else {
-    body = <LeaderboardChart rows={rows} measure={measure} mode={mode} onExclude={onExclude} hovered={hovered} onHover={setHovered} />
+    body = <LeaderboardChart rows={rows} measure={measure} mode={mode} hovered={hovered} onHover={setHovered} />
   }
-
-  const toggle = (code: string) => (excluded.includes(code) ? onRestore(code) : onExclude(code))
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-2">
       <Card className="panel min-w-0 gap-3" aria-live="polite">
         <CardHeader>
           <CardTitle className="text-[15px]">{title}</CardTitle>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {pool}
+          {hiddenNote}
           {body}
         </CardContent>
       </Card>
@@ -217,7 +170,6 @@ export function Leaderboard({
       <Card className="map-panel min-w-0 gap-3 lg:sticky lg:top-5">
         <CardHeader>
           <CardTitle className="text-[15px]">Across Europe</CardTitle>
-          <p className="text-xs text-muted-foreground">Hover a country to find it in the ranking · click to move it into or out of the pool</p>
         </CardHeader>
         <CardContent className="px-3">
           <EuropeMap
@@ -227,7 +179,7 @@ export function Leaderboard({
             showPeriod={mode === 'latest'}
             hovered={hovered}
             onHover={setHovered}
-            onToggle={toggle}
+            onSelect={setHovered}
             aliases={successorOf}
           />
         </CardContent>
@@ -242,23 +194,28 @@ function LeaderboardChart({
   rows,
   measure,
   mode,
-  onExclude,
   hovered,
   onHover,
 }: {
   rows: RankedRow[]
   measure: MeasureDef
   mode: 'period' | 'latest'
-  onExclude: (code: string) => void
 } & HoverProps) {
   const scheme = useColorScheme()
+  // Phones: a name column only as wide as the longest label, smaller text and fewer value ticks.
+  const compact = useIsCompact()
   const chartRows = rows.map((r) => ({
     ...r,
     fill: primaryFlagColor(r.code, scheme),
     dim: hovered !== null && hovered !== r.code,
-    label: mode === 'latest' ? `${r.rank}. ${r.name} · ${r.period}` : `${r.rank}. ${r.name}`,
+    label: mode === 'latest' ? `${r.rank}. ${r.name} · ${compact ? shortQuarter(r.period) : r.period}` : `${r.rank}. ${r.name}`,
   }))
-  const { domain, ticks } = niceZeroDomain(rows[rows.length - 1].value, rows[0].value, 6)
+  const labelWidth = compact
+    ? Math.ceil(Math.max(...chartRows.map((r) => r.label.length)) * COMPACT_CHAR_PX) + 8
+    : mode === 'latest'
+      ? 250
+      : 200
+  const { domain, ticks } = niceZeroDomain(rows[rows.length - 1].value, rows[0].value, compact ? 4 : 6)
   const height = rows.length * ROW_HEIGHT + 40
 
   return (
@@ -267,13 +224,17 @@ function LeaderboardChart({
         <BarChart
           data={chartRows}
           layout="vertical"
-          margin={{ top: 4, right: 64, bottom: 4, left: 8 }}
+          margin={{ top: 4, right: compact ? 52 : 64, bottom: 4, left: compact ? 0 : 8 }}
           barCategoryGap={4}
-          // The whole row band is the hover target, not just the bar.
+          // The whole row band is the hover target, not just the bar. A tap (touch) does the same.
           onMouseMove={(state) => {
             const i = state.activeTooltipIndex
             const code = i === undefined || i === null ? null : (chartRows[Number(i)]?.code ?? null)
             if (code !== hovered) onHover(code)
+          }}
+          onClick={(state) => {
+            const i = state.activeTooltipIndex
+            onHover(i === undefined || i === null ? null : (chartRows[Number(i)]?.code ?? null))
           }}
           onMouseLeave={() => onHover(null)}
         >
@@ -283,7 +244,7 @@ function LeaderboardChart({
             domain={domain}
             ticks={ticks}
             tickFormatter={(v: number) => measure.formatTick(v)}
-            tick={{ fill: 'var(--chart-ink-muted)', fontSize: 12 }}
+            tick={{ fill: 'var(--chart-ink-muted)', fontSize: compact ? 11 : 12 }}
             tickLine={false}
             axisLine={false}
             orientation="top"
@@ -291,7 +252,7 @@ function LeaderboardChart({
           <YAxis
             type="category"
             dataKey="label"
-            width={mode === 'latest' ? 250 : 200}
+            width={labelWidth}
             interval={0}
             tick={(props: { x?: number | string; y?: number | string; index?: number; payload?: { value?: unknown } }) => {
               const code = chartRows[props.index ?? -1]?.code
@@ -303,7 +264,7 @@ function LeaderboardChart({
                   y={Number(props.y ?? 0)}
                   dy={4}
                   textAnchor="end"
-                  fontSize={12}
+                  fontSize={compact ? 11 : 12}
                   fontWeight={isHovered ? 600 : 400}
                   fill="var(--foreground)"
                   opacity={hovered !== null && !isHovered ? 0.55 : 1}
@@ -323,11 +284,6 @@ function LeaderboardChart({
             maxBarSize={18}
             shape={RoundedBarH}
             isAnimationActive={false}
-            cursor="pointer"
-            onClick={(item) => {
-              const code = (item.payload as RankedRow | undefined)?.code
-              if (code) onExclude(code)
-            }}
           >
             <LabelList
               dataKey="value"
@@ -338,13 +294,15 @@ function LeaderboardChart({
                 const w = viewBox.width ?? 0
                 const y = (viewBox.y ?? 0) + (viewBox.height ?? 0) / 2
                 const positive = value >= 0
+                // Phones leave little room left of zero: negative values are labelled right of the zero line.
+                const right = positive || compact
                 return (
                   <text
-                    x={positive ? x + w + 6 : x - 6}
+                    x={positive ? x + w + 6 : compact ? Math.max(x, x + w) + 6 : x - 6}
                     y={y}
                     dy={4}
-                    fontSize={12}
-                    textAnchor={positive ? 'start' : 'end'}
+                    fontSize={compact ? 11 : 12}
+                    textAnchor={right ? 'start' : 'end'}
                     fill="var(--chart-ink-secondary)"
                     style={{ fontVariantNumeric: 'tabular-nums' }}
                   >
@@ -449,11 +407,11 @@ function LeaderboardTable({
               <TableHead className="w-10 text-right">#</TableHead>
               <TableHead>Country</TableHead>
               <TableHead className="text-right">{latest ? 'Last' : period}</TableHead>
-              <TableHead className="text-right">{latest ? 'Previous' : prevPeriod}</TableHead>
+              <TableHead className="text-right max-md:hidden">{latest ? 'Previous' : prevPeriod}</TableHead>
               <TableHead className="text-right">Change (pp)</TableHead>
               {latest && <TableHead className="text-right">Reference</TableHead>}
               <TableHead className="w-8">
-                <span className="sr-only">Exclude</span>
+                <span className="sr-only">Hide</span>
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -461,17 +419,16 @@ function LeaderboardTable({
             {rows.map((r) => (
               <TableRow
                 key={r.code}
-                className={cn('cursor-pointer', hovered === r.code && 'bg-muted')}
-                onClick={() => onExclude(r.code)}
+                className={cn(hovered === r.code && 'bg-muted')}
                 onMouseEnter={() => onHover(r.code)}
                 onMouseLeave={() => onHover(null)}
               >
                 <TableCell className="text-right text-muted-foreground">{r.rank}</TableCell>
                 <TableCell>
-                  {r.name} <span className="text-[11px] text-muted-foreground">{r.code}</span>
+                  {r.name} <span className="text-[11px] text-muted-foreground max-md:hidden">{r.code}</span>
                 </TableCell>
                 <TableCell className="text-right">{measure.formatValue(r.value)}</TableCell>
-                <TableCell className={cn('text-right', r.previous === null && 'text-muted-foreground')}>
+                <TableCell className={cn('text-right max-md:hidden', r.previous === null && 'text-muted-foreground')}>
                   {r.previous === null ? '–' : measure.formatValue(r.previous)}
                 </TableCell>
                 <TableCell className={cn('text-right', r.previous === null && 'text-muted-foreground')}>
@@ -482,12 +439,9 @@ function LeaderboardTable({
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    title="Move to the pool"
-                    aria-label={`Move ${r.name} to the pool`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onExclude(r.code)
-                    }}
+                    title="Hide from the ranking"
+                    aria-label={`Hide ${r.name} from the ranking`}
+                    onClick={() => onExclude(r.code)}
                   >
                     ×
                   </Button>

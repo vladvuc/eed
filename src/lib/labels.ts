@@ -16,3 +16,9 @@ export function spreadLabels(ys: number[], gap: number, top: number, bottom: num
   })
   return out
 }
+
+/** "2026-Q2" → "Q2 '26" (phone labels); other periods unchanged. */
+export function shortQuarter(p: string): string {
+  const m = /^\d{2}(\d{2})-(Q[1-4])$/.exec(p)
+  return m ? `${m[2]} '${m[1]}` : p
+}

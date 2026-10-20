@@ -38,8 +38,43 @@ export interface PageSeo {
 export const COMMON_KEYWORDS = ['European economy', 'Europe economic data', 'EU countries', 'Western Balkans', 'Serbia']
 
 export const PAGE_SEO = {
-  eurostat: {
+  leaderboard: {
     path: '/',
+    title: 'European Countries Ranked — Growth, Inflation and Debt',
+    description:
+      'Every European country ranked for one year by GDP growth, inflation or public debt (IMF), and by GDP back to 1970 incl. Yugoslavia (UN).',
+    keywords: ['European countries ranking', 'fastest growing economies Europe', 'highest inflation Europe', 'most indebted countries Europe', 'Yugoslavia GDP', 'SFRY economy'],
+    heading: 'European countries ranked by growth, inflation and debt',
+    dataset: {
+      source: IMF,
+      sourceUrl: 'https://www.imf.org/external/datamapper/datasets/WEO',
+      variables: [
+        'Real GDP growth, % vs previous year',
+        'Inflation, average consumer prices (% change)',
+        'General government gross debt (% of GDP)',
+      ],
+      temporal: '1980/..',
+    },
+  },
+  latest: {
+    path: '/latest-quarter/',
+    title: 'Latest Quarterly GDP Growth for Every European Country',
+    description:
+      'The most recent published quarter of real GDP growth for each European country, ranked, from IMF quarterly national accounts.',
+    keywords: ['latest GDP figures', 'latest quarter GDP', 'GDP growth this quarter', 'quarterly GDP ranking Europe'],
+    heading: 'Latest quarterly GDP growth for every European country',
+    dataset: {
+      source: IMF,
+      sourceUrl: 'https://data.imf.org/en/datasets/IMF.STA:QNEA',
+      variables: [
+        'Real GDP, % change vs previous quarter (seasonally adjusted)',
+        'Real GDP, % change vs same quarter a year earlier',
+      ],
+      temporal: '1995/..',
+    },
+  },
+  eurostat: {
+    path: '/gdp-eurostat/',
     title: 'European GDP by Country — Eurostat National Accounts',
     description:
       'Compare GDP of EU, Western Balkan and EFTA countries with Eurostat national accounts: current prices in euro, PPS, real GDP and annual growth, as charts and tables.',
@@ -160,46 +195,14 @@ export const PAGE_SEO = {
       temporal: '1980/..',
     },
   },
-  leaderboard: {
-    path: '/leaderboard/',
-    title: 'European Countries Ranked — Growth, Inflation and Debt',
-    description:
-      'Every European country ranked for one year by GDP growth, inflation or public debt (IMF), and by GDP back to 1970 incl. Yugoslavia (UN).',
-    keywords: ['European countries ranking', 'fastest growing economies Europe', 'highest inflation Europe', 'most indebted countries Europe', 'Yugoslavia GDP', 'SFRY economy'],
-    heading: 'European countries ranked by growth, inflation and debt',
-    dataset: {
-      source: IMF,
-      sourceUrl: 'https://www.imf.org/external/datamapper/datasets/WEO',
-      variables: [
-        'Real GDP growth, % vs previous year',
-        'Inflation, average consumer prices (% change)',
-        'General government gross debt (% of GDP)',
-      ],
-      temporal: '1980/..',
-    },
-  },
-  latest: {
-    path: '/latest-quarter/',
-    title: 'Latest Quarterly GDP Growth for Every European Country',
-    description:
-      'The most recent published quarter of real GDP growth for each European country, ranked, from IMF quarterly national accounts.',
-    keywords: ['latest GDP figures', 'latest quarter GDP', 'GDP growth this quarter', 'quarterly GDP ranking Europe'],
-    heading: 'Latest quarterly GDP growth for every European country',
-    dataset: {
-      source: IMF,
-      sourceUrl: 'https://data.imf.org/en/datasets/IMF.STA:QNEA',
-      variables: [
-        'Real GDP, % change vs previous quarter (seasonally adjusted)',
-        'Real GDP, % change vs same quarter a year earlier',
-      ],
-      temporal: '1995/..',
-    },
-  },
 } satisfies Record<string, PageSeo>
 
 export type SeoPageId = keyof typeof PAGE_SEO
 
 export const SEO_PAGE_IDS = Object.keys(PAGE_SEO) as SeoPageId[]
+
+/** The page on the root path (the homepage). */
+export const HOME_PAGE_ID = SEO_PAGE_IDS.find((id) => PAGE_SEO[id].path === '/') as SeoPageId
 
 export function pageIdFromPath(pathname: string): SeoPageId | undefined {
   const normalized = `/${pathname.split('/').filter(Boolean).join('/')}/`.replace('//', '/')
@@ -299,7 +302,7 @@ export function renderBody(id: SeoPageId): string {
 export function renderSitemap(siteUrl: string, lastmod: string): string {
   const urls = SEO_PAGE_IDS.map(
     (id) =>
-      `  <url>\n    <loc>${siteUrl}${PAGE_SEO[id].path}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>${id === 'eurostat' ? '1.0' : '0.8'}</priority>\n  </url>`,
+      `  <url>\n    <loc>${siteUrl}${PAGE_SEO[id].path}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>${id === HOME_PAGE_ID ? '1.0' : '0.8'}</priority>\n  </url>`,
   ).join('\n')
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`
 }

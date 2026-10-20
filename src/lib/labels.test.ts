@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { spreadLabels } from './labels'
+import { shortQuarter, spreadLabels } from './labels'
 
 describe('spreadLabels', () => {
   it('leaves well-separated labels where they are', () => {
@@ -24,5 +24,12 @@ describe('spreadLabels', () => {
     const out = spreadLabels([80, 20, 81], 13, 0, 200)
     expect(out[1]).toBe(20)
     expect(out[2] - out[0]).toBeGreaterThanOrEqual(13)
+  })
+})
+
+describe('phone labels', () => {
+  it('shortens quarters and leaves years alone', () => {
+    expect(shortQuarter('2026-Q2')).toBe("Q2 '26")
+    expect(shortQuarter('2025')).toBe('2025')
   })
 })

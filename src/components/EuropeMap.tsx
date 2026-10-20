@@ -27,7 +27,7 @@ function loadGeometry(): Promise<Geometry> {
   return geometryPromise
 }
 
-/** No data / in the pool: diagonal hatching, so it can't be mistaken for a value near zero. */
+/** No data / hidden: diagonal hatching, so it can't be mistaken for a value near zero. */
 const MUTED = 'url(#map-no-data)'
 const MUTED_CSS = 'repeating-linear-gradient(135deg, var(--map-empty) 0 2px, transparent 2px 4px)'
 
@@ -38,7 +38,7 @@ export function EuropeMap({
   showPeriod,
   hovered,
   onHover,
-  onToggle,
+  onSelect,
   aliases = {},
 }: {
   data: Map<string, MapDatum>
@@ -48,8 +48,8 @@ export function EuropeMap({
   showPeriod: boolean
   hovered: string | null
   onHover: (code: string | null) => void
-  /** Click: move to / back from the pool. */
-  onToggle: (code: string) => void
+  /** Click or tap: highlight the country (in the ranking too). */
+  onSelect: (code: string) => void
   /** Shape code → the code it is drawn as (successor states → the former country they were part of). */
   aliases?: Record<string, string>
 }) {
@@ -84,7 +84,7 @@ export function EuropeMap({
   const handlers = (code: string) => ({
     onMouseEnter: () => onHover(dataCode(code)),
     onMouseLeave: () => onHover(null),
-    onClick: () => onToggle(dataCode(code)),
+    onClick: () => onSelect(dataCode(code)),
   })
 
   return (
@@ -117,7 +117,6 @@ export function EuropeMap({
                 stroke="var(--card)"
                 strokeWidth={0.7}
                 strokeLinejoin="round"
-                className="cursor-pointer"
                 {...handlers(c.code)}
               />
             ))}
@@ -135,7 +134,6 @@ export function EuropeMap({
                   fill={fillOf(c.code)}
                   stroke="var(--card)"
                   strokeWidth={1.5}
-                  className="cursor-pointer"
                   {...handlers(c.code)}
                 />
               ))}
@@ -168,7 +166,7 @@ export function EuropeMap({
             </div>
             <div className="text-muted-foreground">
               {activeDatum.excluded
-                ? 'In the pool · click to put back'
+                ? 'Hidden from the ranking'
                 : activeDatum.value === null
                   ? 'No data'
                   : (
@@ -217,7 +215,7 @@ function MapLegend({ measure, scale }: { measure: MeasureDef; scale: MapScale })
             .join(' · ')}
         </span>
         <span className="inline-flex shrink-0 items-center gap-1.5">
-          <span className="inline-block size-2.5 rounded-sm border" style={{ background: MUTED_CSS }} /> no data / in pool
+          <span className="inline-block size-2.5 rounded-sm border" style={{ background: MUTED_CSS }} /> no data / hidden
         </span>
       </div>
     </div>

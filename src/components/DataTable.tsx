@@ -60,7 +60,8 @@ export function DataTable({ periods, frequency, series, values, measure, project
         <Table className="data-table text-[13px] tabular-nums">
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
-              <TableHead>{frequency === 'Q' ? 'Quarter' : 'Year'}</TableHead>
+              {/* The period column stays put while wide tables scroll sideways. */}
+              <TableHead className="sticky left-0 bg-card">{frequency === 'Q' ? 'Quarter' : 'Year'}</TableHead>
               {series.map((s) => (
                 <TableHead key={s.code} className="text-right">
                   <span className="inline-flex items-center gap-1.5">
@@ -76,7 +77,7 @@ export function DataTable({ periods, frequency, series, values, measure, project
               const projected = !!projectionsFrom && p >= projectionsFrom
               return (
                 <TableRow key={p} className={projected ? 'text-muted-foreground' : ''}>
-                  <TableCell className="font-medium text-muted-foreground">
+                  <TableCell className="sticky left-0 bg-card font-medium text-muted-foreground">
                     {p}
                     {projected ? 'ᵖ' : ''}
                   </TableCell>

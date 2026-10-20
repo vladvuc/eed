@@ -1,4 +1,4 @@
-import { XIcon } from 'lucide-react'
+import { ChevronDownIcon, XIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -40,6 +40,9 @@ export function CountryPicker({
   onClearAll,
 }: Props) {
   const [query, setQuery] = useState('')
+  // Phones: the list folds away once countries are picked, so the chart isn't a screen further down.
+  const [listOpen, setListOpen] = useState(selected.length === 0)
+  const showList = listOpen || query.trim() !== ''
 
   const nameOf = useMemo(() => {
     const labels = new Map(countries.map((c) => [c.code, c.name]))
@@ -65,7 +68,7 @@ export function CountryPicker({
       className="picker flex flex-col overflow-hidden rounded-xl border bg-card md:sticky md:top-5 md:h-[calc(100vh-6rem)]"
       aria-label="Country selection"
     >
-      <div className="flex flex-col gap-2 border-b p-3">
+      <div className={cn('flex flex-col gap-2 border-b p-3', !showList && 'max-md:border-b-0')}>
         <Input
           type="search"
           placeholder="Search countries…"
@@ -73,13 +76,26 @@ export function CountryPicker({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
           <span>
             {selected.length} / {MAX_SERIES} selected
           </span>
-          <Button variant="link" size="xs" className="h-auto p-0" onClick={onClearAll} disabled={selected.length === 0}>
-            Clear all
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="link"
+              size="xs"
+              className="h-auto p-0 md:hidden"
+              onClick={() => setListOpen((o) => !o)}
+              aria-expanded={showList}
+              aria-controls="country-list"
+            >
+              {showList ? 'Hide list' : 'Show list'}
+              <ChevronDownIcon className={cn('transition-transform', showList && 'rotate-180')} aria-hidden="true" />
+            </Button>
+            <Button variant="link" size="xs" className="h-auto p-0" onClick={onClearAll} disabled={selected.length === 0}>
+              Clear all
+            </Button>
+          </div>
         </div>
         {selected.length > 0 && (
           <ul className="selected-chips flex flex-wrap gap-1.5" aria-label="Selected countries">
@@ -102,7 +118,7 @@ export function CountryPicker({
         {isFull && <p className="text-xs text-muted-foreground">Limit reached. Deselect one to add more.</p>}
       </div>
 
-      <ScrollArea className="min-h-0 flex-1 max-md:h-80 max-md:flex-none">
+      <ScrollArea id="country-list" className={cn('min-h-0 flex-1 max-md:h-80 max-md:flex-none', !showList && 'max-md:hidden')}>
         <div className="py-2">
           {visibleGroups.map((g) => {
             const allSelected = g.codes.every((c) => selected.includes(c))
@@ -145,7 +161,7 @@ export function CountryPicker({
                         <label
                           htmlFor={id}
                           className={cn(
-                            'row -mx-1.5 grid cursor-pointer grid-cols-[auto_12px_1fr_auto] items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted',
+                            'row -mx-1.5 grid cursor-pointer grid-cols-[auto_12px_1fr_auto] items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted max-md:py-1.5',
                             disabled && 'cursor-not-allowed text-muted-foreground',
                           )}
                         >

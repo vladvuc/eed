@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 import {
+  HOME_PAGE_ID,
   PAGE_SEO,
   PLACEHOLDER_SITE_URL,
   SEO_PAGE_IDS,
@@ -41,7 +42,7 @@ function seoPages(): Plugin {
       handler(html, ctx) {
         template = html
         // Dev serves index.html for every tab path, so render the tab that was asked for.
-        const id = (ctx.server && pageIdFromPath(new URL(ctx.originalUrl ?? '/', 'http://x').pathname)) || 'eurostat'
+        const id = (ctx.server && pageIdFromPath(new URL(ctx.originalUrl ?? '/', 'http://x').pathname)) || HOME_PAGE_ID
         return render(html, id)
       },
     },

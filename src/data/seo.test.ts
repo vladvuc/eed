@@ -20,7 +20,8 @@ describe('PAGE_SEO', () => {
 
 describe('pageIdFromPath', () => {
   it('matches with or without the trailing slash', () => {
-    expect(pageIdFromPath('/')).toBe('eurostat')
+    expect(pageIdFromPath('/')).toBe('leaderboard')
+    expect(pageIdFromPath('/gdp-eurostat/')).toBe('eurostat')
     expect(pageIdFromPath('/inflation/')).toBe('inflation')
     expect(pageIdFromPath('/inflation')).toBe('inflation')
     expect(pageIdFromPath('/public-debt/')).toBe('debt')

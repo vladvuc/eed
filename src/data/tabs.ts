@@ -42,6 +42,27 @@ export const LEADERBOARD_MEASURES: MeasureDef[] = [
 
 export const TABS: TabDef[] = [
   {
+    id: 'leaderboard',
+    kind: 'leaderboard',
+    label: 'Leaderboard',
+    title: 'All European countries ranked for one year — IMF World Economic Outlook',
+    source: 'imf',
+    measures: LEADERBOARD_MEASURES,
+    defaultMeasure: 'NGDP_RPCH',
+    defaultFromYear: 1995,
+  },
+  {
+    id: 'latest',
+    kind: 'leaderboard',
+    rankMode: 'latest',
+    label: 'Latest quarter',
+    title: 'Latest published quarter per country — IMF national accounts',
+    source: 'imf-quarterly',
+    measures: IMF_QUARTERLY_MEASURES.filter((m) => m.hasZeroBaseline),
+    defaultMeasure: 'YOY',
+    defaultFromYear: 1995,
+  },
+  {
     id: 'eurostat',
     kind: 'series',
     label: 'GDP · Eurostat',
@@ -115,27 +136,6 @@ export const TABS: TabDef[] = [
     measures: IMF_CUMULATIVE_MEASURES,
     defaultMeasure: 'CUM_PCT',
     defaultFromYear: 2000,
-  },
-  {
-    id: 'leaderboard',
-    kind: 'leaderboard',
-    label: 'Leaderboard',
-    title: 'All European countries ranked for one year — IMF World Economic Outlook',
-    source: 'imf',
-    measures: LEADERBOARD_MEASURES,
-    defaultMeasure: 'NGDP_RPCH',
-    defaultFromYear: 1995,
-  },
-  {
-    id: 'latest',
-    kind: 'leaderboard',
-    rankMode: 'latest',
-    label: 'Latest quarter',
-    title: 'Latest published quarter per country — IMF national accounts',
-    source: 'imf-quarterly',
-    measures: IMF_QUARTERLY_MEASURES.filter((m) => m.hasZeroBaseline),
-    defaultMeasure: 'YOY',
-    defaultFromYear: 1995,
   },
 ]
 
