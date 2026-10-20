@@ -164,8 +164,8 @@ export const PAGE_SEO = {
     path: '/leaderboard/',
     title: 'European Countries Ranked — Growth, Inflation and Debt',
     description:
-      'Every European country ranked for one year by GDP growth, inflation, public debt or budget balance, from the IMF World Economic Outlook.',
-    keywords: ['European countries ranking', 'fastest growing economies Europe', 'highest inflation Europe', 'most indebted countries Europe'],
+      'Every European country ranked for one year by GDP growth, inflation or public debt (IMF), and by GDP back to 1970 incl. Yugoslavia (UN).',
+    keywords: ['European countries ranking', 'fastest growing economies Europe', 'highest inflation Europe', 'most indebted countries Europe', 'Yugoslavia GDP', 'SFRY economy'],
     heading: 'European countries ranked by growth, inflation and debt',
     dataset: {
       source: IMF,

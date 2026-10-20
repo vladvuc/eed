@@ -21,6 +21,8 @@ interface Props {
   onView: (v: View) => void
   /** Base-year picker (cumulative tab only). */
   base?: { value: number; onChange: (y: number) => void }
+  /** File name for the Download button. */
+  downloadName: string
 }
 
 export function Controls({
@@ -36,6 +38,7 @@ export function Controls({
   view,
   onView,
   base,
+  downloadName,
 }: Props) {
   return (
     <div className="flex flex-wrap items-end gap-4" role="group" aria-label="Chart controls">
@@ -82,7 +85,7 @@ export function Controls({
         </div>
       </Field>
 
-      <ViewToggle view={view} onView={onView} />
+      <ViewToggle view={view} onView={onView} downloadName={downloadName} />
     </div>
   )
 }

@@ -58,5 +58,13 @@ export function displayName(code: string, officialLabel: string | undefined): st
   return DISPLAY_NAME_OVERRIDES[code] ?? officialLabel ?? code
 }
 
+/**
+ * Ranked name for one year. Before reunification (3 October 1990) Germany's growth and inflation are
+ * West Germany's; its GDP levels (IMF, UN) cover today's territory, so those keep "Germany".
+ */
+export function periodName(code: string, name: string, period: string, isLevel: boolean): string {
+  return code === 'DEU' && !isLevel && Number(period.slice(0, 4)) <= 1990 ? 'West Germany' : name
+}
+
 export const KOSOVO_FOOTNOTE =
   '* This designation is without prejudice to positions on status, and is in line with UNSCR 1244/1999.'

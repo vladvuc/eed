@@ -45,6 +45,7 @@ export function DataTable({ periods, frequency, series, values, measure, project
         <Button
           variant="outline"
           size="sm"
+          data-export-ignore
           onClick={() =>
             downloadCsv(
               `${measure.code}_${periods[0]}_${periods[periods.length - 1]}.csv`,

@@ -116,7 +116,7 @@ export function CountryPicker({
                       variant="link"
                       size="xs"
                       className="h-auto p-0"
-                      onClick={() => onAddMany(g.codes)}
+                      onClick={() => onAddMany(g.codes.filter((c) => available.has(c)))}
                       disabled={allSelected || isFull}
                       title={isFull ? 'Limit reached' : `Add up to ${MAX_SERIES - selected.length} from this group`}
                     >
@@ -136,8 +136,9 @@ export function CountryPicker({
                 <ul>
                   {g.codes.map((code) => {
                     const checked = code in colors
-                    const disabled = !checked && isFull
                     const noData = !available.has(code)
+                    // Without data in the selected years a country can't be added (only removed).
+                    const disabled = !checked && (isFull || noData)
                     const id = `country-${code}`
                     return (
                       <li key={code}>
@@ -152,7 +153,7 @@ export function CountryPicker({
                           <Swatch color={colors[code]} />
                           <span>{nameOf(code)}</span>
                           {noData ? (
-                            <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground" title="No data for the selected measure">
+                            <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground" title="No data for this measure in the selected years">
                               no data
                             </Badge>
                           ) : (

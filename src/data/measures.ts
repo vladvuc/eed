@@ -1,3 +1,5 @@
+import type { Source } from '../types'
+
 export interface MeasureDef {
   code: string
   label: string
@@ -11,6 +13,8 @@ export interface MeasureDef {
   formatTick: (v: number) => string
   /** Full-precision formatter for tooltip / table. */
   formatValue: (v: number) => string
+  /** Loads this source instead of the tab's (leaderboard UN measures). */
+  source?: Source
 }
 
 const nf0 = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 })
@@ -236,6 +240,53 @@ export const IMF_QUARTERLY_MEASURES: MeasureDef[] = [
     hasZeroBaseline: false,
     formatTick: (v) => nf0.format(v),
     formatValue: (v) => nf1.format(v),
+  },
+]
+
+/**
+ * Leaderboard only: UN national accounts from 1970, including Yugoslavia, Czechoslovakia and the USSR
+ * (public/data/un.json, built by scripts/fetch-un.ts).
+ */
+export const UN_LEADERBOARD_MEASURES: MeasureDef[] = [
+  {
+    code: 'UN_NGDPD',
+    label: 'GDP, current prices (US$) · UN, from 1970',
+    short: 'bn US$',
+    isLevel: true,
+    hasZeroBaseline: false,
+    formatTick: compactBillions('$'),
+    formatValue: (v) => `${nf1.format(v)} bn US$`,
+    source: 'un',
+  },
+  {
+    code: 'UN_NGDPDPC',
+    label: 'GDP per capita, current prices (US$) · UN, from 1970',
+    short: 'US$ per capita',
+    isLevel: true,
+    hasZeroBaseline: false,
+    formatTick: (v) => `$${nf0.format(v)}`,
+    formatValue: (v) => `${nf0.format(v)} US$`,
+    source: 'un',
+  },
+  {
+    code: 'UN_NGDP_RPCH',
+    label: 'Real GDP growth, % vs previous year · UN, from 1971',
+    short: '%',
+    isLevel: false,
+    hasZeroBaseline: true,
+    formatTick: pctTick,
+    formatValue: pct,
+    source: 'un',
+  },
+  {
+    code: 'UN_DEFL_PCH',
+    label: 'Inflation, GDP deflator (% change) · UN, from 1971',
+    short: '%',
+    isLevel: false,
+    hasZeroBaseline: true,
+    formatTick: pctTick,
+    formatValue: pct,
+    source: 'un',
   },
 ]
 

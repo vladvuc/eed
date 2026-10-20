@@ -57,12 +57,16 @@ export const FLAG_COLORS: Record<string, string[]> = {
   SMR: ['#59A7D3', '#FFFFFF'],
   MCO: ['#CE1126', '#FFFFFF'],
   // Aggregates: the flag of Europe for the EU and the euro area; no flag for "Emerging and Developing Europe".
+  // Former federations (leaderboard, UN data): commonly cited values.
+  YUG: ['#003893', '#DE0000', '#FFFFFF'],
+  CSK: ['#11457E', '#D7141A', '#FFFFFF'],
+  SUN: ['#CC0000', '#FFD700'],
   EU: ['#003399', '#FFCC00'],
   EURO: ['#003399', '#FFCC00'],
   EDE: ['#8C8C8C'],
 }
 
-const EUROSTAT_TO_ISO3: Record<string, string> = {
+export const EUROSTAT_TO_ISO3: Record<string, string> = {
   BE: 'BEL', BG: 'BGR', CZ: 'CZE', DK: 'DNK', DE: 'DEU', EE: 'EST', IE: 'IRL', EL: 'GRC', ES: 'ESP',
   FR: 'FRA', HR: 'HRV', IT: 'ITA', CY: 'CYP', LV: 'LVA', LT: 'LTU', LU: 'LUX', HU: 'HUN', MT: 'MLT',
   NL: 'NLD', AT: 'AUT', PL: 'POL', PT: 'PRT', RO: 'ROU', SI: 'SVN', SK: 'SVK', FI: 'FIN', SE: 'SWE',
@@ -70,6 +74,7 @@ const EUROSTAT_TO_ISO3: Record<string, string> = {
   IS: 'ISL', LI: 'LIE', NO: 'NOR', CH: 'CHE', UK: 'GBR',
   TR: 'TUR', MD: 'MDA', UA: 'UKR', RU: 'RUS',
   EU27_2020: 'EU', EA20: 'EURO',
+  YU: 'YUG', SU: 'SUN', CS: 'CSK', // former countries (UN data)
 }
 
 /** Neutral used for any code without a known flag. */

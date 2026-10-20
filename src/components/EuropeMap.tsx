@@ -39,6 +39,7 @@ export function EuropeMap({
   hovered,
   onHover,
   onToggle,
+  aliases = {},
 }: {
   data: Map<string, MapDatum>
   measure: MeasureDef
@@ -49,6 +50,8 @@ export function EuropeMap({
   onHover: (code: string | null) => void
   /** Click: move to / back from the pool. */
   onToggle: (code: string) => void
+  /** Shape code → the code it is drawn as (successor states → the former country they were part of). */
+  aliases?: Record<string, string>
 }) {
   const [geo, setGeo] = useState<Geometry | null>(null)
   useEffect(() => {
@@ -61,19 +64,27 @@ export function EuropeMap({
 
   if (!geo) return <div className="grid aspect-[1000/808] place-items-center text-sm text-muted-foreground">Loading map…</div>
 
+  const dataCode = (code: string) => aliases[code] ?? code
   const fillOf = (code: string) => {
-    const d = data.get(code)
+    const d = data.get(dataCode(code))
     if (!d || d.excluded || d.value === null || !scale) return MUTED
     return scale.colorOf(d.value)
   }
-  const active = hovered ? geo.countries.find((c) => c.code === hovered) : undefined
+  // A former country is drawn as all of its successors' shapes; the tooltip sits at their mean centre.
+  const activeShapes = hovered ? geo.countries.filter((c) => dataCode(c.code) === hovered) : []
+  const active = activeShapes.length
+    ? {
+        cx: activeShapes.reduce((a, c) => a + c.cx, 0) / activeShapes.length,
+        cy: activeShapes.reduce((a, c) => a + c.cy, 0) / activeShapes.length,
+      }
+    : undefined
   const activeDatum = hovered ? data.get(hovered) : undefined
   const ratio = geo.width / geo.height
 
   const handlers = (code: string) => ({
-    onMouseEnter: () => onHover(code),
+    onMouseEnter: () => onHover(dataCode(code)),
     onMouseLeave: () => onHover(null),
-    onClick: () => onToggle(code),
+    onClick: () => onToggle(dataCode(code)),
   })
 
   return (
@@ -129,10 +140,14 @@ export function EuropeMap({
                 />
               ))}
           </g>
-          {active && (
+          {activeShapes.length > 0 && (
             <g pointerEvents="none">
-              <path d={active.d} fill="none" stroke="var(--foreground)" strokeWidth={2} strokeLinejoin="round" />
-              {active.dot && <circle cx={active.cx} cy={active.cy} r={7} fill="none" stroke="var(--foreground)" strokeWidth={2} />}
+              {activeShapes.map((s) => (
+                <g key={s.code}>
+                  <path d={s.d} fill="none" stroke="var(--foreground)" strokeWidth={2} strokeLinejoin="round" />
+                  {s.dot && <circle cx={s.cx} cy={s.cy} r={7} fill="none" stroke="var(--foreground)" strokeWidth={2} />}
+                </g>
+              ))}
             </g>
           )}
         </svg>

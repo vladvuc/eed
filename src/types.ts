@@ -1,6 +1,9 @@
-/** Client mirror of server/types.ts (the shape served by /api/eurostat, /api/imf, /api/imf-quarterly). */
+/**
+ * Client mirror of server/types.ts (the shape served by /api/eurostat, /api/imf, /api/imf-quarterly).
+ * 'un' is a static snapshot (public/data/un.json, refreshed by scripts/fetch-un.ts) used by the leaderboard.
+ */
 
-export type Source = 'eurostat' | 'imf' | 'imf-quarterly'
+export type Source = 'eurostat' | 'imf' | 'imf-quarterly' | 'un'
 export type Frequency = 'A' | 'Q'
 
 export type Series = (number | null)[]
@@ -21,6 +24,16 @@ export interface StatDataset {
   projectionsFrom?: string
   /** Free-text caveats shown in the footer (e.g. how derived measures were computed). */
   notes?: string[]
+  /** UN data only: former federations, shown up to `lastYear` instead of their successors. */
+  former?: FormerCountry[]
+  /** Leaderboard: periods before this one were filled in from UN data. */
+  unBefore?: string
+}
+
+export interface FormerCountry {
+  code: string
+  lastYear: number
+  successors: string[]
 }
 
 export interface CountryGroup {

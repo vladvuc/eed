@@ -17,6 +17,8 @@ interface Props {
   projectionsFrom?: string
   view: View
   onView: (v: View) => void
+  /** File name for the Download button. */
+  downloadName: string
 }
 
 export function LeaderboardControls({
@@ -29,6 +31,7 @@ export function LeaderboardControls({
   projectionsFrom,
   view,
   onView,
+  downloadName,
 }: Props) {
   const i = periods ? periods.indexOf(period) : -1
   const projected = !!periods && !!projectionsFrom && period >= projectionsFrom
@@ -87,7 +90,7 @@ export function LeaderboardControls({
         </Field>
       )}
 
-      <ViewToggle view={view} onView={onView} />
+      <ViewToggle view={view} onView={onView} downloadName={downloadName} />
     </div>
   )
 }

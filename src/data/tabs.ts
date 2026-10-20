@@ -7,6 +7,7 @@ import {
   IMF_GROWTH_MEASURES,
   IMF_INFLATION_MEASURES,
   IMF_QUARTERLY_MEASURES,
+  UN_LEADERBOARD_MEASURES,
   type MeasureDef,
 } from './measures'
 
@@ -27,13 +28,16 @@ export interface TabDef {
   defaultMeasure: string
   /** Year range starts here on first load (data before is sparse for the Balkans / ex-USSR). */
   defaultFromYear: number
+  /** Series only: offer Yugoslavia, the USSR and Czechoslovakia (UN data) when the range starts before they split. */
+  formerCountries?: boolean
 }
 
-/** Measures the leaderboard can rank by (all annual WEO rates). */
+/** Measures the leaderboard can rank by: annual WEO rates, plus UN GDP back to 1970 (incl. Yugoslavia). */
 export const LEADERBOARD_MEASURES: MeasureDef[] = [
   ...IMF_GROWTH_MEASURES,
   ...IMF_INFLATION_MEASURES,
   ...IMF_DEBT_MEASURES,
+  ...UN_LEADERBOARD_MEASURES,
 ]
 
 export const TABS: TabDef[] = [
@@ -46,6 +50,7 @@ export const TABS: TabDef[] = [
     measures: EUROSTAT_MEASURES,
     defaultMeasure: 'CP_MEUR',
     defaultFromYear: 1995,
+    formerCountries: true,
   },
   {
     id: 'imf',
@@ -56,6 +61,7 @@ export const TABS: TabDef[] = [
     measures: IMF_GDP_MEASURES,
     defaultMeasure: 'NGDPD',
     defaultFromYear: 1995,
+    formerCountries: true,
   },
   {
     id: 'imf-quarterly',
@@ -76,6 +82,7 @@ export const TABS: TabDef[] = [
     measures: IMF_GROWTH_MEASURES,
     defaultMeasure: 'NGDP_RPCH',
     defaultFromYear: 1995,
+    formerCountries: true,
   },
   {
     id: 'inflation',
@@ -86,6 +93,7 @@ export const TABS: TabDef[] = [
     measures: IMF_INFLATION_MEASURES,
     defaultMeasure: 'PCPIPCH',
     defaultFromYear: 1995,
+    formerCountries: true,
   },
   {
     id: 'debt',

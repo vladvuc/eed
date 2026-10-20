@@ -6,7 +6,7 @@ export function fetchDataset(source: Source): Promise<StatDataset> {
   const cached = inflight.get(source)
   if (cached) return cached
   const p = (async () => {
-    const res = await fetch(`/api/${source}`)
+    const res = await fetch(source === 'un' ? '/data/un.json' : `/api/${source}`)
     if (!res.ok) {
       let detail = `${res.status} ${res.statusText}`
       try {

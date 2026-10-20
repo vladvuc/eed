@@ -10,12 +10,15 @@ interface State {
 
 const IDLE: State = { data: null, error: null, loading: true }
 
-/** Loads one source; results are cached in api.ts so switching tabs back is instant. */
-export function useDataset(source: Source): State & { retry: () => void } {
+const NONE: State = { data: null, error: null, loading: false }
+
+/** Loads one source (null: none); results are cached in api.ts so switching tabs back is instant. */
+export function useDataset(source: Source | null): State & { retry: () => void } {
   const [state, setState] = useState<Record<string, State>>({})
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
+    if (!source) return
     let cancelled = false
     fetchDataset(source)
       .then((data) => {
@@ -31,9 +34,10 @@ export function useDataset(source: Source): State & { retry: () => void } {
   }, [source, attempt])
 
   const retry = useCallback(() => {
+    if (!source) return
     setState((s) => ({ ...s, [source]: IDLE }))
     setAttempt((n) => n + 1)
   }, [source])
 
-  return { ...(state[source] ?? IDLE), retry }
+  return { ...(source ? (state[source] ?? IDLE) : NONE), retry }
 }

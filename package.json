@@ -34,6 +34,7 @@
     "cn": "^0.5.0",
     "concurrently": "^9.0.0",
     "d3-geo": "^3.1.1",
+    "html-to-image": "^1.11.13",
     "lucide-react": "^1.59.0",
     "oxlint": "^1.88.0",
     "radix-ui": "^1.8.1",

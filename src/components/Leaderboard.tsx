@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   Bar,
   BarChart,
@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { displayName } from '../data/countries'
+import { displayName, periodName } from '../data/countries'
 import type { MeasureDef } from '../data/measures'
 import { TOOLTIP_CLASS } from '../lib/chart-ui'
 import { csvCell, downloadCsv } from '../lib/csv'
@@ -33,6 +33,8 @@ interface Props {
   data: StatDataset
   /** Country codes to rank (aggregates and the pool excluded by the caller). */
   codes: string[]
+  /** Successor state → former country ranked in its place this year (drawn as one on the map). */
+  successorOf?: Record<string, string>
   /** Codes parked in the pool, in the order they were excluded. */
   excluded: string[]
   onExclude: (code: string) => void
@@ -76,6 +78,7 @@ function RoundedBarH(props: BarShapeProps) {
 export function Leaderboard({
   data,
   codes,
+  successorOf,
   excluded,
   onExclude,
   onRestore,
@@ -89,10 +92,17 @@ export function Leaderboard({
   subtitle,
 }: Props) {
   const rows = useMemo(
-    () => (mode === 'latest' ? rankLatest(data, codes, measure.code) : rankCountries(data, codes, measure.code, period)),
+    () =>
+      (mode === 'latest' ? rankLatest(data, codes, measure.code) : rankCountries(data, codes, measure.code, period)).map(
+        (r) => ({ ...r, name: periodName(r.code, r.name, r.period, measure.isLevel) }),
+      ),
     [data, codes, measure, period, mode],
   )
   const labels = useMemo(() => new Map(data.countries.map((c) => [c.code, c.name])), [data])
+  const nameOf = useCallback(
+    (code: string) => periodName(code, displayName(code, labels.get(code)), period, measure.isLevel),
+    [labels, period, measure],
+  )
   const scheme = useColorScheme()
 
   // One hovered country shared by the ranking (left) and the map (right).
@@ -105,7 +115,7 @@ export function Leaderboard({
       const r = byCode.get(code)
       out.set(code, {
         code,
-        name: r?.name ?? displayName(code, labels.get(code)),
+        name: r?.name ?? nameOf(code),
         value: r?.value ?? null,
         rank: r?.rank ?? null,
         period: r?.period ?? null,
@@ -113,7 +123,7 @@ export function Leaderboard({
       })
     }
     return out
-  }, [rows, codes, excluded, labels])
+  }, [rows, codes, excluded, nameOf])
   const scale = useMemo(
     () => (rows.length ? mapScale(measure.code, measure.isLevel, rows.map((r) => r.value), scheme) : null),
     [rows, measure, scheme],
@@ -124,7 +134,11 @@ export function Leaderboard({
   const collapsed = excluded.length > POOL_COLLAPSE_AT && !poolOpen
 
   const pool = (
-    <div className="pool flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-dashed px-3 py-2" aria-label="Excluded countries">
+    <div
+      className="pool flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-dashed px-3 py-2"
+      aria-label="Excluded countries"
+      data-export-ignore
+    >
       <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Pool</span>
       {excluded.length === 0 ? (
         <span className="flex-1 text-xs text-muted-foreground">
@@ -143,7 +157,7 @@ export function Leaderboard({
             <li key={code}>
               <Badge asChild variant="outline" className="chip cursor-pointer bg-card hover:bg-muted">
                 <button type="button" onClick={() => onRestore(code)} title="Put back into the ranking">
-                  {displayName(code, labels.get(code))} <span aria-hidden="true">↩</span>
+                  {nameOf(code)} <span aria-hidden="true">↩</span>
                 </button>
               </Badge>
             </li>
@@ -214,6 +228,7 @@ export function Leaderboard({
             hovered={hovered}
             onHover={setHovered}
             onToggle={toggle}
+            aliases={successorOf}
           />
         </CardContent>
       </Card>
@@ -423,7 +438,7 @@ function LeaderboardTable({
           {measure.label}
           {latest ? '' : `, ${period}`} · {rows.length} countries
         </span>
-        <Button variant="outline" size="sm" onClick={download}>
+        <Button variant="outline" size="sm" onClick={download} data-export-ignore>
           Download CSV
         </Button>
       </div>

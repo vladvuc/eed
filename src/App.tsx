@@ -18,8 +18,17 @@ import { useSelection } from './hooks/useSelection'
 import { useColorScheme } from './hooks/useColorScheme'
 import { assignFlagColors } from './lib/flagColors'
 import { CUMULATIVE_SOURCE_MEASURE, deriveCumulative } from './lib/cumulative'
+import {
+  FORMER_NOTE_PREFIX,
+  activeFormer,
+  extendBackWithUn,
+  lastFormerYear,
+  mergeFormerCountries,
+  successorAliases,
+} from './lib/formerCountries'
+import { slug } from './lib/downloadImage'
 import { applyPageSeo } from './lib/pageSeo'
-import { yearOf, type TabId, type View } from './types'
+import { yearOf, type Source, type TabId, type View } from './types'
 
 interface TabState {
   measure: string
@@ -42,6 +51,10 @@ function readExcluded(): string[] {
     return []
   }
 }
+
+const SOURCE_NAMES: Record<Source, string> = { eurostat: 'Eurostat', imf: 'IMF', 'imf-quarterly': 'IMF', un: 'UN' }
+const UN_LEADERBOARD_TITLE = 'All European countries ranked for one year — UN national accounts'
+const LEADERBOARD_FROM_YEAR = 1975
 
 /** Every IMF country (no aggregates) for the leaderboard. */
 const LEADERBOARD_CODES = IMF_GROUPS.filter((g) => g.id !== 'agg').flatMap((g) => g.codes)
@@ -84,14 +97,11 @@ export default function App() {
     setTabId(id)
   }, [])
 
-  const { data: sourceData, error, loading, retry } = useDataset(tab.source)
-
   // Leaderboard "pool": countries taken out of the ranking. Survives reloads.
   const [excluded, setExcluded] = useState<string[]>(readExcluded)
   useEffect(() => {
     window.localStorage.setItem(EXCLUDED_KEY, JSON.stringify(excluded))
   }, [excluded])
-  const rankedCodes = useMemo(() => LEADERBOARD_CODES.filter((c) => !excluded.includes(c)), [excluded])
 
   // One selection per code space: Eurostat (ISO2) and IMF (ISO3), shared across the IMF tabs.
   const eurostatSel = useSelection(DEFAULT_SELECTION.eurostat)
@@ -114,6 +124,20 @@ export default function App() {
   const patch = (p: Partial<TabState>) => setTabStates((s) => ({ ...s, [tabId]: { ...ts, ...p } }))
 
   const measure = tab.measures.find((m) => m.code === ts.measure) ?? tab.measures[0]
+
+  // Some leaderboard measures come from another source (UN data for years before the 1990s splits).
+  const dataSource = measure.source ?? tab.source
+  const { data: rawData, error, loading, retry } = useDataset(dataSource)
+  // Annual IMF and Eurostat data gain Yugoslavia, the USSR and Czechoslovakia (UN) until they split.
+  const { data: unData } = useDataset(dataSource === 'imf' || dataSource === 'eurostat' ? 'un' : null)
+  // The leaderboard also reaches back to LEADERBOARD_FROM_YEAR with UN figures, before the WEO starts.
+  const sourceData = useMemo(() => {
+    if (!rawData || !unData) return rawData
+    if (dataSource === 'eurostat') return mergeFormerCountries(rawData, unData, 'eurostat')
+    if (dataSource !== 'imf') return rawData
+    const merged = mergeFormerCountries(rawData, unData)
+    return tab.kind === 'leaderboard' ? extendBackWithUn(merged, unData, LEADERBOARD_FROM_YEAR) : merged
+  }, [rawData, unData, dataSource, tab.kind])
 
   const periods = useMemo(() => sourceData?.periods ?? [], [sourceData])
   const years = useMemo(() => Array.from(new Set(periods.map(yearOf))), [periods])
@@ -157,6 +181,30 @@ export default function App() {
       : (periods[periods.length - 1] ?? '')
   const period = ts.period && periods.includes(ts.period) ? ts.period : defaultPeriod
 
+  // Former countries are ranked up to their split; their successors join the ranking afterwards.
+  const formerNow = useMemo(
+    () => (data && tab.kind === 'leaderboard' && tab.rankMode !== 'latest' ? activeFormer(data, measure.code, period) : []),
+    [data, tab, measure, period],
+  )
+  const successorOf = useMemo(() => successorAliases(formerNow), [formerNow])
+  const leaderboardCodes = useMemo(() => {
+    const base = dataSource === 'un' ? (sourceData?.countries.map((c) => c.code) ?? []) : LEADERBOARD_CODES
+    const kept = base.filter((c) => !successorOf[c])
+    return [...kept, ...formerNow.map((f) => f.code).filter((c) => !kept.includes(c))]
+  }, [dataSource, sourceData, successorOf, formerNow])
+
+  // Series: a "Former countries" group while the range starts before the last split.
+  const formerUntil = tab.formerCountries ? lastFormerYear(data) : null
+  const groups = useMemo(() => {
+    const base = groupsFor(tab.source)
+    if (formerUntil === null || from > formerUntil || !data?.former) return base
+    const former = { id: 'former', label: 'Former countries', codes: data.former.map((f) => f.code) }
+    const agg = base.findIndex((g) => g.id === 'agg')
+    return agg < 0 ? [...base, former] : [...base.slice(0, agg), former, ...base.slice(agg)]
+  }, [tab.source, formerUntil, from, data])
+  const showFormerNote =
+    tab.kind === 'leaderboard' ? formerNow.length > 0 : sel.selected.some((c) => data?.former?.some((f) => f.code === c))
+
   // Cumulative tab: selected countries whose growth series starts after the base year
   // cannot be chained back to it, so they would draw nothing. Say so, and offer a fix.
   const cumulativeGaps = useMemo(() => {
@@ -174,17 +222,26 @@ export default function App() {
     null,
   )
 
-  // Dataset notes that only concern the derived debt amounts stay on those measures.
+  // Dataset notes that only concern some measures or countries stay with them.
   const notes = useMemo(
     () =>
-      data?.notes?.filter((n) => !n.startsWith('Debt in') || measure.code.startsWith('GGXWDG_')) ?? undefined,
-    [data, measure],
+      data?.notes?.filter((n) => {
+        if (n.startsWith('Debt in')) return measure.code.startsWith('GGXWDG_')
+        if (n.startsWith(FORMER_NOTE_PREFIX)) return showFormerNote
+        return true
+      }) ?? undefined,
+    [data, measure, showFormerNote],
   )
 
+  // Countries with data in the selected years (others are greyed out in the picker).
   const available = useMemo(() => {
     const byGeo = data?.measures[measure.code] ?? {}
-    return new Set(Object.keys(byGeo).filter((c) => byGeo[c].some((v) => v !== null)))
-  }, [data, measure])
+    return new Set(
+      Object.keys(byGeo).filter((c) => byGeo[c].slice(visible.start, visible.end).some((v) => v !== null)),
+    )
+  }, [data, measure, visible])
+
+  const downloadPrefix = `european-economic-data_${tabId}_${slug(measure.label)}`
 
   const footer = (
     <Footer
@@ -230,7 +287,7 @@ export default function App() {
       </header>
 
       {loading && (
-        <p className="status mx-auto w-full max-w-[1600px] px-4 md:px-8 py-6 text-muted-foreground">Loading {tab.source === 'eurostat' ? 'Eurostat' : 'IMF'} data…</p>
+        <p className="status mx-auto w-full max-w-[1600px] px-4 md:px-8 py-6 text-muted-foreground">Loading {SOURCE_NAMES[dataSource]} data…</p>
       )}
       {error && (
         <div className="status mx-auto w-full max-w-[1600px] px-4 md:px-8 flex items-center gap-3 py-6 text-destructive" role="alert">
@@ -253,25 +310,33 @@ export default function App() {
             projectionsFrom={data.projectionsFrom}
             view={ts.view}
             onView={(v) => patch({ view: v })}
+            downloadName={`${downloadPrefix}${tab.rankMode === 'latest' ? '' : `_${period}`}.png`}
           />
-          <Leaderboard
-            data={data}
-            codes={rankedCodes}
-            excluded={excluded}
-            onExclude={(code) => setExcluded((xs) => (xs.includes(code) ? xs : [...xs, code]))}
-            onRestore={(code) => setExcluded((xs) => xs.filter((c) => c !== code))}
-            onRestoreAll={() => setExcluded([])}
-            onExcludeAll={() => setExcluded((xs) => [...xs, ...LEADERBOARD_CODES.filter((c) => !xs.includes(c))])}
-            measure={measure}
-            period={period}
-            mode={tab.rankMode ?? 'period'}
-            view={ts.view}
-            title={`${measure.label}${tab.rankMode === 'latest' ? ' — latest quarter' : ` — ${period}`}`}
-            subtitle={`${tab.title} · biggest value first${
-              tab.rankMode !== 'latest' && data.projectionsFrom && period >= data.projectionsFrom ? ' · IMF projection' : ''
-            }`}
-          />
-          {footer}
+          <div className="flex flex-col gap-4" data-export-root>
+            <Leaderboard
+              data={data}
+              codes={leaderboardCodes.filter((c) => !excluded.includes(c))}
+              successorOf={successorOf}
+              excluded={excluded}
+              onExclude={(code) => setExcluded((xs) => (xs.includes(code) ? xs : [...xs, code]))}
+              onRestore={(code) => setExcluded((xs) => xs.filter((c) => c !== code))}
+              onRestoreAll={() => setExcluded([])}
+              onExcludeAll={() => setExcluded((xs) => [...xs, ...leaderboardCodes.filter((c) => !xs.includes(c))])}
+              measure={measure}
+              period={period}
+              mode={tab.rankMode ?? 'period'}
+              view={ts.view}
+              title={`${measure.label}${tab.rankMode === 'latest' ? ' — latest quarter' : ` — ${period}`}`}
+              subtitle={`${dataSource === 'un' ? UN_LEADERBOARD_TITLE : tab.title} · biggest value first${
+                tab.rankMode !== 'latest' && data.projectionsFrom && period >= data.projectionsFrom ? ' · IMF projection' : ''
+              }${
+                data.unBefore && period < data.unBefore
+                  ? ` · ${period}: UN national accounts${measure.code === 'PCPIPCH' ? ' (GDP deflator)' : ''}`
+                  : ''
+              }`}
+            />
+            {footer}
+          </div>
         </main>
       )}
 
@@ -279,7 +344,7 @@ export default function App() {
         <div className="mx-auto w-full max-w-[1600px] px-4 md:px-8 grid flex-1 items-start gap-6 pt-5 pb-8 md:grid-cols-[320px_minmax(0,1fr)]">
           <CountryPicker
             countries={data.countries}
-            groups={groupsFor(tab.source)}
+            groups={groups}
             available={available}
             selected={sel.selected}
             colors={colors}
@@ -304,71 +369,75 @@ export default function App() {
               view={ts.view}
               onView={(v) => patch({ view: v })}
               base={tab.derive === 'cumulative' ? { value: baseYear, onChange: (y) => patch({ base: y }) } : undefined}
+              downloadName={`${downloadPrefix}_${from}-${to}.png`}
             />
 
-            <Card className="panel gap-3" aria-live="polite">
-              <CardHeader className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-                <div>
-                  <CardTitle className="text-[15px]">
-                    {measure.label}
-                    {tab.derive === 'cumulative' ? ` — since ${baseYear}` : ''}
-                  </CardTitle>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {tab.title}
-                    {series.length === 1 && measure.hasZeroBaseline ? ' · single country shown as bars per period' : ''}
-                    {ts.logScale ? (measure.isLevel ? ' · log scale' : ' · symmetric log scale (zero and negatives kept)') : ''}
-                  </p>
-                </div>
-                {series.length > 0 && (
-                  <ul className="legend flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted-foreground" aria-label="Legend">
-                    {series.map((s) => (
-                      <li key={s.code} className="inline-flex items-center gap-1.5">
-                        <Swatch color={s.color} line />
-                        <span>{s.name}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                {cumulativeGaps.length > 0 && (
-                  <p className="hint-row rounded-md border bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground" role="status">
-                    Not shown since {baseYear}:{' '}
-                    {cumulativeGaps
-                      .map((g) => (g.from === null ? `${g.name} (no growth data)` : `${g.name} (data from ${g.from})`))
-                      .join(', ')}
-                    .{' '}
-                    {suggestedBase !== null && suggestedBase !== baseYear && (
-                      <Button variant="link" size="xs" className="h-auto p-0" onClick={() => patch({ base: suggestedBase })}>
-                        Use {suggestedBase} as base year
-                      </Button>
-                    )}
-                  </p>
-                )}
-                {ts.view === 'chart' ? (
-                  <SeriesChart
-                    periods={visible.periods}
-                    frequency={data.frequency}
-                    series={series}
-                    values={values}
-                    measure={measure}
-                    logScale={ts.logScale}
-                    projectionsFrom={data.projectionsFrom}
-                  />
-                ) : (
-                  <DataTable
-                    periods={visible.periods}
-                    frequency={data.frequency}
-                    series={series}
-                    values={values}
-                    measure={measure}
-                    projectionsFrom={data.projectionsFrom}
-                  />
-                )}
-              </CardContent>
-            </Card>
+            {/* What the Download button saves: the chart or table, with its sources. */}
+            <div className="flex flex-col gap-4" data-export-root>
+              <Card className="panel gap-3" aria-live="polite">
+                <CardHeader className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+                  <div>
+                    <CardTitle className="text-[15px]">
+                      {measure.label}
+                      {tab.derive === 'cumulative' ? ` — since ${baseYear}` : ''}
+                    </CardTitle>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {tab.title}
+                      {series.length === 1 && measure.hasZeroBaseline ? ' · single country shown as bars per period' : ''}
+                      {ts.logScale ? (measure.isLevel ? ' · log scale' : ' · symmetric log scale (zero and negatives kept)') : ''}
+                    </p>
+                  </div>
+                  {series.length > 0 && (
+                    <ul className="legend flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted-foreground" aria-label="Legend">
+                      {series.map((s) => (
+                        <li key={s.code} className="inline-flex items-center gap-1.5">
+                          <Swatch color={s.color} line />
+                          <span>{s.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  {cumulativeGaps.length > 0 && (
+                    <p className="hint-row rounded-md border bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground" role="status">
+                      Not shown since {baseYear}:{' '}
+                      {cumulativeGaps
+                        .map((g) => (g.from === null ? `${g.name} (no growth data)` : `${g.name} (data from ${g.from})`))
+                        .join(', ')}
+                      .{' '}
+                      {suggestedBase !== null && suggestedBase !== baseYear && (
+                        <Button variant="link" size="xs" className="h-auto p-0" onClick={() => patch({ base: suggestedBase })}>
+                          Use {suggestedBase} as base year
+                        </Button>
+                      )}
+                    </p>
+                  )}
+                  {ts.view === 'chart' ? (
+                    <SeriesChart
+                      periods={visible.periods}
+                      frequency={data.frequency}
+                      series={series}
+                      values={values}
+                      measure={measure}
+                      logScale={ts.logScale}
+                      projectionsFrom={data.projectionsFrom}
+                    />
+                  ) : (
+                    <DataTable
+                      periods={visible.periods}
+                      frequency={data.frequency}
+                      series={series}
+                      values={values}
+                      measure={measure}
+                      projectionsFrom={data.projectionsFrom}
+                    />
+                  )}
+                </CardContent>
+              </Card>
 
-            {footer}
+              {footer}
+            </div>
           </main>
         </div>
       )}

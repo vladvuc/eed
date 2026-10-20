@@ -56,6 +56,15 @@ export function Footer({ source, updated, notes, hasProjections }: Props) {
           </p>
         </>
       )}
+      {source === 'un' && (
+        <p>
+          Source:{' '}
+          <a className={link} href="https://unstats.un.org/unsd/snaama/" target="_blank" rel="noreferrer">
+            United Nations Statistics Division, National Accounts – Analysis of Main Aggregates
+          </a>
+          {updated ? ` (${updated})` : ''}.
+        </p>
+      )}
       {notes?.map((n) => (
         <p key={n} className="footnote max-w-[72ch]">
           {n}
