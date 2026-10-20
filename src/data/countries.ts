@@ -52,12 +52,18 @@ const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
   // Eurostat already labels Kosovo "Kosovo*"; the IMF doesn't. The asterisk points to KOSOVO_FOOTNOTE.
   XK: 'Kosovo*',
   UVK: 'Kosovo*',
-  // In the IMF code list but not in its data, so it arrives without a name.
+}
+
+/** Names for IMF countries some datasets don't list (no data there), e.g. microstates in the quarterly accounts. */
+const FALLBACK_NAMES: Record<string, string> = {
+  AND: 'Andorra',
+  LIE: 'Liechtenstein',
   MCO: 'Monaco',
+  SMR: 'San Marino',
 }
 
 export function displayName(code: string, officialLabel: string | undefined): string {
-  return DISPLAY_NAME_OVERRIDES[code] ?? officialLabel ?? code
+  return DISPLAY_NAME_OVERRIDES[code] ?? officialLabel ?? FALLBACK_NAMES[code] ?? code
 }
 
 /**
