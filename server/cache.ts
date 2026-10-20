@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { captureServerException } from './analytics.ts'
 
 const TTL_MS = 24 * 60 * 60 * 1000
 /** After a failed upstream fetch, serve the cached copy for this long before trying upstream again. */
@@ -104,6 +105,8 @@ export function createCachedLoader<T>(name: string, fetcher: () => Promise<T>, o
     } catch (err) {
       failedAt = Date.now()
       if (memory) {
+        // Visitors still get data, so report it here; with nothing to serve, the route's error handler does.
+        captureServerException(err, undefined, { dataset: name, served: memoryIsSeed ? 'seed' : 'stale' })
         console.warn(
           `[${name}] upstream failed, serving ${memoryIsSeed ? 'bundled snapshot' : 'stale cache'} (retry in ${RETRY_AFTER_MS / 60_000} min):`,
           (err as Error).message,

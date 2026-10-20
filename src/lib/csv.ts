@@ -1,3 +1,5 @@
+import { track } from './analytics'
+
 export function csvCell(s: string): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
@@ -10,4 +12,5 @@ export function downloadCsv(filename: string, csv: string) {
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+  track('csv_downloaded', { file: filename })
 }

@@ -12,6 +12,10 @@ COPY . .
 # (default https://eed.jesuisbored.com, see src/data/seo.ts). Dokploy: Build-time Arguments.
 ARG SITE_URL
 ENV SITE_URL=$SITE_URL
+# PostHog project token (public; analytics are off without it). Baked into the client here and
+# passed on to the server below, so Dokploy needs it once, as a Build-time Argument.
+ARG POSTHOG_PROJECT_TOKEN
+ENV VITE_POSTHOG_PROJECT_TOKEN=$POSTHOG_PROJECT_TOKEN
 RUN pnpm build
 
 FROM node:24-slim AS runtime
@@ -21,6 +25,8 @@ ENV NODE_ENV=production \
     CACHE_DIR=/app/data \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
+ARG POSTHOG_PROJECT_TOKEN
+ENV POSTHOG_PROJECT_TOKEN=$POSTHOG_PROJECT_TOKEN
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile && pnpm store prune
 COPY --from=build /app/dist ./dist

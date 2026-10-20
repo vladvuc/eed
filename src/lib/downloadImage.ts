@@ -1,4 +1,5 @@
 import { toPng } from 'html-to-image'
+import { track } from './analytics'
 
 /** Marks the part of the page the Download button saves (chart or table, plus the source footer). */
 export const EXPORT_ROOT_ATTR = 'data-export-root'
@@ -23,6 +24,7 @@ export async function downloadVisibleChart(filename: string): Promise<void> {
   link.download = filename
   link.href = dataUrl
   link.click()
+  track('image_downloaded', { file: filename })
 }
 
 /** "GDP, current prices (€)" → "gdp-current-prices" for file names. */

@@ -29,6 +29,7 @@ import {
   mergeFormerCountries,
   successorAliases,
 } from './lib/formerCountries'
+import { track } from './lib/analytics'
 import { slug } from './lib/downloadImage'
 import { applyPageSeo } from './lib/pageSeo'
 import { yearOf, type Source, type TabId, type View } from './types'
@@ -124,6 +125,14 @@ export default function App() {
     base: null,
   }
   const patch = (p: Partial<TabState>) => setTabStates((s) => ({ ...s, [tabId]: { ...ts, ...p } }))
+  const changeMeasure = (code: string) => {
+    patch({ measure: code })
+    track('measure_changed', { tab: tabId, measure: code })
+  }
+  const changeView = (view: View) => {
+    patch({ view })
+    track('view_changed', { tab: tabId, view })
+  }
 
   const measure = tab.measures.find((m) => m.code === ts.measure) ?? tab.measures[0]
 
@@ -309,7 +318,14 @@ export default function App() {
       {error && (
         <div className="status mx-auto w-full max-w-[1600px] px-4 md:px-8 flex items-center gap-3 py-6 text-destructive" role="alert">
           <p>Could not load data: {error}</p>
-          <Button variant="outline" size="sm" onClick={retry}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              track('data_load_retried', { tab: tabId, source: dataSource })
+              retry()
+            }}
+          >
             Retry
           </Button>
         </div>
@@ -320,16 +336,27 @@ export default function App() {
           <LeaderboardControls
             measures={tab.measures}
             measure={measure}
-            onMeasure={(code) => patch({ measure: code })}
+            onMeasure={changeMeasure}
             periods={tab.rankMode === 'latest' ? undefined : leaderboardPeriods}
             period={period}
-            onPeriod={(p) => patch({ period: p })}
+            onPeriod={(p) => {
+              patch({ period: p })
+              track('leaderboard_year_changed', { tab: tabId, measure: measure.code, period: p })
+            }}
             projectionsFrom={data.projectionsFrom}
             view={ts.view}
-            onView={(v) => patch({ view: v })}
+            onView={changeView}
             downloadName={`${downloadPrefix}${tab.rankMode === 'latest' ? '' : `_${period}`}.png`}
             countryFilter={
-              <CountryFilter countries={filterCountries} groups={filterGroupList} hidden={hidden} onChange={setExcluded} />
+              <CountryFilter
+                countries={filterCountries}
+                groups={filterGroupList}
+                hidden={hidden}
+                onChange={(xs) => {
+                  setExcluded(xs)
+                  track('ranking_countries_filtered', { tab: tabId, hidden_count: xs.length })
+                }}
+              />
             }
           />
           <div className="flex flex-col gap-4" data-export-root>
@@ -338,8 +365,14 @@ export default function App() {
               codes={leaderboardCodes.filter((c) => !excluded.includes(c))}
               successorOf={successorOf}
               excluded={hidden}
-              onExclude={(code) => setExcluded((xs) => (xs.includes(code) ? xs : [...xs, code]))}
-              onRestoreAll={() => setExcluded((xs) => setShown(xs, leaderboardCodes, true))}
+              onExclude={(code) => {
+                setExcluded((xs) => (xs.includes(code) ? xs : [...xs, code]))
+                track('country_hidden_from_ranking', { tab: tabId, country: code })
+              }}
+              onRestoreAll={() => {
+                setExcluded((xs) => setShown(xs, leaderboardCodes, true))
+                track('ranking_hidden_countries_restored', { tab: tabId })
+              }}
               measure={measure}
               period={period}
               mode={tab.rankMode ?? 'period'}
@@ -369,26 +402,55 @@ export default function App() {
             selected={sel.selected}
             colors={colors}
             isFull={sel.isFull}
-            onToggle={sel.toggle}
-            onAddMany={sel.addMany}
-            onRemoveMany={sel.removeMany}
-            onClearAll={sel.clearAll}
+            onToggle={(code) => {
+              const selected = !sel.selected.includes(code)
+              if (!selected || !sel.isFull) track('country_toggled', { tab: tabId, country: code, selected })
+              sel.toggle(code)
+            }}
+            onAddMany={(codes) => {
+              sel.addMany(codes)
+              track('country_group_added', { tab: tabId, countries: codes })
+            }}
+            onRemoveMany={(codes) => {
+              sel.removeMany(codes)
+              track('country_group_removed', { tab: tabId, countries: codes })
+            }}
+            onClearAll={() => {
+              sel.clearAll()
+              track('countries_cleared', { tab: tabId })
+            }}
           />
 
           <main className="main flex min-w-0 flex-col gap-4">
             <Controls
               measures={tab.measures}
               measure={measure}
-              onMeasure={(code) => patch({ measure: code })}
+              onMeasure={changeMeasure}
               years={years}
               logScale={ts.logScale}
-              onLogScale={(v) => patch({ logScale: v })}
+              onLogScale={(v) => {
+                patch({ logScale: v })
+                track('log_scale_toggled', { tab: tabId, enabled: v })
+              }}
               from={from}
               to={to}
-              onRange={(f, t) => patch({ range: { from: f, to: t } })}
+              onRange={(f, t) => {
+                patch({ range: { from: f, to: t } })
+                track('year_range_changed', { tab: tabId, from: f, to: t })
+              }}
               view={ts.view}
-              onView={(v) => patch({ view: v })}
-              base={tab.derive === 'cumulative' ? { value: baseYear, onChange: (y) => patch({ base: y }) } : undefined}
+              onView={changeView}
+              base={
+                tab.derive === 'cumulative'
+                  ? {
+                      value: baseYear,
+                      onChange: (y) => {
+                        patch({ base: y })
+                        track('cumulative_base_year_changed', { base_year: y })
+                      },
+                    }
+                  : undefined
+              }
               downloadName={`${downloadPrefix}_${from}-${to}.png`}
             />
 
@@ -427,7 +489,15 @@ export default function App() {
                         .join(', ')}
                       .{' '}
                       {suggestedBase !== null && suggestedBase !== baseYear && (
-                        <Button variant="link" size="xs" className="h-auto p-0" onClick={() => patch({ base: suggestedBase })}>
+                        <Button
+                          variant="link"
+                          size="xs"
+                          className="h-auto p-0"
+                          onClick={() => {
+                            patch({ base: suggestedBase })
+                            track('cumulative_base_year_changed', { base_year: suggestedBase, suggested: true })
+                          }}
+                        >
                           Use {suggestedBase} as base year
                         </Button>
                       )}
