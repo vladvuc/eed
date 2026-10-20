@@ -1,4 +1,4 @@
-import { createCachedLoader } from './cache.ts'
+import { createCachedLoader, type CachedResult } from './cache.ts'
 import { IMF_EUROPE, IMF_NAMES } from './imf.ts'
 import type { SdmxJsonData, Series, StatDataset } from './types.ts'
 
@@ -181,4 +181,14 @@ async function fetchFromQnea(): Promise<StatDataset> {
   return data
 }
 
-export const getImfQuarterly = createCachedLoader<StatDataset>('imf-quarterly', fetchFromQnea)
+/** Pure: names from IMF_NAMES, so a copy cached with other names (e.g. bare codes) is corrected on read. */
+export function withImfNames(ds: StatDataset): StatDataset {
+  return { ...ds, countries: ds.countries.map((c) => ({ code: c.code, name: IMF_NAMES[c.code] ?? c.name })) }
+}
+
+const loadQnea = createCachedLoader<StatDataset>('imf-quarterly', fetchFromQnea)
+
+export async function getImfQuarterly(): Promise<CachedResult<StatDataset>> {
+  const result = await loadQnea()
+  return { ...result, data: withImfNames(result.data) }
+}

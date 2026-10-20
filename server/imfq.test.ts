@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeQnea, parseSdmxJson, type QneaRaw } from './imfq.ts'
-import type { SdmxJsonData } from './types.ts'
+import { normalizeQnea, parseSdmxJson, withImfNames, type QneaRaw } from './imfq.ts'
+import type { SdmxJsonData, StatDataset } from './types.ts'
 import sa from './__fixtures__/qnea.Q.SA.XDC.json' with { type: 'json' }
 import nsa from './__fixtures__/qnea.Q.NSA.XDC.json' with { type: 'json' }
 import nom from './__fixtures__/qnea.V.NSA.XDC.json' with { type: 'json' }
@@ -70,5 +70,18 @@ describe('normalizeQnea', () => {
     const o = normalizeQnea(r)
     o.measures.IDX_SA.DEU.forEach((v, i) => expect(v).toBeCloseTo([90, 100, 110, 100, 120][i], 9))
     expect(o.measures.QOQ_SA.DEU[4]).toBeCloseTo(20, 9)
+  })
+})
+
+describe('withImfNames', () => {
+  it('replaces bare codes in a previously cached copy with country names', () => {
+    const cached = {
+      countries: [{ code: 'DNK', name: 'DNK' }, { code: 'TUR', name: 'TUR' }, { code: 'XXX', name: 'Elsewhere' }],
+    } as StatDataset
+    expect(withImfNames(cached).countries).toEqual([
+      { code: 'DNK', name: 'Denmark' },
+      { code: 'TUR', name: 'Türkiye' },
+      { code: 'XXX', name: 'Elsewhere' },
+    ])
   })
 })
